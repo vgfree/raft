@@ -10,6 +10,8 @@
 #ifndef RAFT_H_
 #define RAFT_H_
 
+#include <stddef.h>
+
 #define RAFT_ERR_NOT_LEADER                  -2
 #define RAFT_ERR_ONE_VOTING_CHANGE_ONLY      -3
 #define RAFT_ERR_SHUTDOWN                    -4
@@ -91,6 +93,19 @@ typedef struct
 
     raft_entry_data_t data;
 } raft_entry_t;
+
+typedef struct
+{
+    /** number of entries within this batch */
+    int n_entries;
+
+    /** array of entries within this batch */
+    raft_entry_t* entries[0];
+} raft_batch_t;
+
+raft_batch_t *raft_batch_make(int n_entries);
+
+void raft_batch_free(raft_batch_t *bat);
 
 /** Message sent from client to server.
  * The client sends this message to a server with the intention of having it
@@ -332,6 +347,15 @@ typedef int (
     int entry_idx
     );
 
+typedef int (
+*func_logbatch_event_f
+)   (
+    raft_server_t* raft,
+    void *user_data,
+    raft_batch_t *batch,
+    int start_idx
+    );
+
 typedef struct
 {
     /** Callback for sending request vote messages */
@@ -362,6 +386,12 @@ typedef struct
      * Return 0 on success.
      * Return RAFT_ERR_SHUTDOWN if you want the server to shutdown. */
     func_logentry_event_f log_offer;
+
+    /** Callback for adding some entries to the log
+     * For safety reasons this callback MUST flush the change to disk.
+     * Return 0 on success.
+     * Return RAFT_ERR_SHUTDOWN if you want the server to shutdown. */
+    func_logbatch_event_f log_offer_batch;
 
     /** Callback for removing the oldest entry from the log
      * For safety reasons this callback MUST flush the change to disk.
@@ -709,6 +739,15 @@ void raft_set_commit_idx(raft_server_t* me, int commit_idx);
  *  RAFT_ERR_SHUTDOWN server should shutdown
  *  RAFT_ERR_NOMEM memory allocation failure */
 int raft_append_entry(raft_server_t* me, raft_entry_t* ety);
+
+/** Add some entry to the server's log.
+ * This should be used to reload persistent state, ie. the commit log.
+ * @param[in] bat The entraies to be appended
+ * @return
+ *  0 on success;
+ *  RAFT_ERR_SHUTDOWN server should shutdown
+ *  RAFT_ERR_NOMEM memory allocation failure */
+int raft_append_batch(raft_server_t* me_, raft_batch_t* bat);
 
 /** Confirm if a msg_entry_response has been committed.
  * @param[in] r The response we want to check */

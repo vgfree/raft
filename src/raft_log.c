@@ -19,6 +19,14 @@
 
 #define INITIAL_CAPACITY 10
 
+#ifndef min
+#define min(a, b) ((a) < (b) ? (a) : (b))
+#endif
+
+#ifndef max
+#define max(a, b) ((a) < (b) ? (b) : (a))
+#endif
+
 typedef struct
 {
     /* size of array */
@@ -46,15 +54,16 @@ static int mod(int a, int b)
     return r < 0 ? r + b : r;
 }
 
-static int __ensurecapacity(log_private_t * me)
+static int __ensurecapacity(log_private_t * me, int add)
 {
     int i, j;
     raft_entry_t *temp;
 
-    if (me->count < me->size)
+    if (me->count + add <= me->size)
         return 0;
 
-    temp = (raft_entry_t*)__raft_calloc(1, sizeof(raft_entry_t) * me->size * 2);
+    int new_size = max(me->count + add, me->size * 2);
+    temp = (raft_entry_t*)__raft_calloc(1, sizeof(raft_entry_t) * new_size);
     if (!temp)
         return RAFT_ERR_NOMEM;
 
@@ -68,7 +77,7 @@ static int __ensurecapacity(log_private_t * me)
     /* clean up old entries */
     __raft_free(me->entries);
 
-    me->size *= 2;
+    me->size = new_size;
     me->entries = temp;
     me->front = 0;
     me->back = me->count;
@@ -136,33 +145,60 @@ void log_clear(log_t* me_)
     me->base = 0;
 }
 
-/** TODO: rename log_append */
-int log_append_entry(log_t* me_, raft_entry_t* ety)
+int log_append_batch(log_t* me_, raft_batch_t* bat)
 {
     log_private_t* me = (log_private_t*)me_;
-    int idx = me->base + me->count + 1;
     int e;
 
-    e = __ensurecapacity(me);
+    e = __ensurecapacity(me, bat->n_entries);
     if (e != 0)
         return e;
 
-    memcpy(&me->entries[me->back], ety, sizeof(raft_entry_t));
-
-    if (me->cb && me->cb->log_offer)
-    {
-        void* ud = raft_get_udata(me->raft);
-        e = me->cb->log_offer(me->raft, ud, &me->entries[me->back], idx);
-        if (0 != e)
-            return e;
-        raft_offer_log(me->raft, &me->entries[me->back], idx);
+    for (int i = 0; i < bat->n_entries; i ++) {
+	    int back = (me->back + i) % me->size;
+	    memcpy(&me->entries[back], bat->entries[i], sizeof(raft_entry_t));
     }
 
-    me->count++;
-    me->back++;
+    void* ud = raft_get_udata(me->raft);
+    if (me->cb) {
+	    if (me->cb->log_offer_batch) {
+		    int idx = me->base + me->count + 1;
+		    e = me->cb->log_offer_batch(me->raft, ud, bat, idx);
+		    if (0 != e)
+			    return e;
+		    for (int i = 0; i < bat->n_entries; i ++) {
+			    idx = me->base + me->count + 1 + i;
+			    raft_offer_log(me->raft, bat->entries[i], idx);
+		    }
+	    } else if (me->cb->log_offer) {
+		    for (int i = 0; i < bat->n_entries; i ++) {
+			    int idx = me->base + me->count + 1 + i;
+			    e = me->cb->log_offer(me->raft, ud, bat->entries[i], idx);
+			    if (0 != e)
+				    return e;
+			    raft_offer_log(me->raft, bat->entries[i], idx);
+		    }
+	    }
+    }
+
+    me->count += bat->n_entries;
+    me->back += bat->n_entries;
     me->back = me->back % me->size;
 
     return 0;
+}
+/** TODO: rename log_append */
+int log_append_entry(log_t* me_, raft_entry_t* ety)
+{
+	raft_batch_t *bat = raft_batch_make(1);
+	bat->n_entries = 1;
+	bat->entries[0] = ety;
+
+	int e = log_append_batch(me_, bat);
+
+	raft_batch_free(bat);
+
+	return e;
 }
 
 raft_entry_t* log_get_from_idx(log_t* me_, int idx, int *n_etys)
@@ -172,7 +208,7 @@ raft_entry_t* log_get_from_idx(log_t* me_, int idx, int *n_etys)
 
     assert(0 <= idx - 1);
 
-    if (me->base + me->count < idx || idx < me->base)
+    if (me->base + me->count < idx || idx <= me->base)
     {
         *n_etys = 0;
         return NULL;
