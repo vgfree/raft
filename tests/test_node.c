@@ -7,7 +7,7 @@
 #include "CuTest.h"
 
 #include "raft.h"
-#include "raft_log.h"
+#include "_raft_log.h"
 #include "raft_private.h"
 
 void TestRaft_is_voting_by_default(CuTest * tc)

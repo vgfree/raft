@@ -15,7 +15,7 @@
 
 #include "raft.h"
 #include "raft_private.h"
-#include "raft_log.h"
+#include "_raft_log.h"
 
 #define INITIAL_CAPACITY 10
 

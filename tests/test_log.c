@@ -9,7 +9,7 @@
 #include "linked_list_queue.h"
 
 #include "raft.h"
-#include "raft_log.h"
+#include "_raft_log.h"
 #include "raft_private.h"
 
 static int __logentry_get_node_id(

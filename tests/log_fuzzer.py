@@ -34,7 +34,7 @@ class Libraft(object):
                  if not line.startswith('#')])
 
         ffi.cdef(load('include/raft.h'))
-        ffi.cdef(load('include/raft_log.h'))
+        ffi.cdef(load('include/_raft_log.h'))
 
 
 commands = one_of(
