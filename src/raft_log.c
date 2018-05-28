@@ -27,26 +27,6 @@
 #define max(a, b) ((a) < (b) ? (b) : (a))
 #endif
 
-typedef struct
-{
-    /* size of array */
-    int size;
-
-    /* the amount of elements in the array */
-    int count;
-
-    /* position of the queue */
-    int front, back;
-
-    /* we compact the log, and thus need to increment the Base Log Index */
-    int base;
-
-    raft_entry_t* entries;
-
-    /* callbacks */
-    raft_cbs_t *cb;
-    void* raft;
-} log_private_t;
 
 static int mod(int a, int b)
 {
@@ -54,7 +34,7 @@ static int mod(int a, int b)
     return r < 0 ? r + b : r;
 }
 
-static int __ensurecapacity(log_private_t * me, int add)
+static int __ensurecapacity(raft_log_private_t * me, int add)
 {
     int i, j;
     raft_entry_t *temp;
@@ -86,7 +66,7 @@ static int __ensurecapacity(log_private_t * me, int add)
 
 int log_load_from_snapshot(log_t *me_, int idx, int term)
 {
-    log_private_t* me = (log_private_t*)me_;
+    raft_log_private_t* me = (raft_log_private_t*)me_;
 
     log_clear(me_);
 
@@ -110,7 +90,7 @@ int log_load_from_snapshot(log_t *me_, int idx, int term)
 
 log_t* log_alloc(int initial_size)
 {
-    log_private_t* me = (log_private_t*)__raft_calloc(1, sizeof(log_private_t));
+    raft_log_private_t* me = (raft_log_private_t*)__raft_calloc(1, sizeof(raft_log_private_t));
     if (!me)
         return NULL;
     me->size = initial_size;
@@ -130,7 +110,7 @@ log_t* log_new()
 
 void log_set_callbacks(log_t* me_, raft_cbs_t* funcs, void* raft)
 {
-    log_private_t* me = (log_private_t*)me_;
+    raft_log_private_t* me = (raft_log_private_t*)me_;
 
     me->raft = raft;
     me->cb = funcs;
@@ -138,7 +118,7 @@ void log_set_callbacks(log_t* me_, raft_cbs_t* funcs, void* raft)
 
 void log_clear(log_t* me_)
 {
-    log_private_t* me = (log_private_t*)me_;
+    raft_log_private_t* me = (raft_log_private_t*)me_;
     me->count = 0;
     me->back = 0;
     me->front = 0;
@@ -147,7 +127,7 @@ void log_clear(log_t* me_)
 
 int log_append_batch(log_t* me_, raft_batch_t* bat)
 {
-    log_private_t* me = (log_private_t*)me_;
+    raft_log_private_t* me = (raft_log_private_t*)me_;
     int e;
 
     e = __ensurecapacity(me, bat->n_entries);
@@ -203,7 +183,7 @@ int log_append_entry(log_t* me_, raft_entry_t* ety)
 
 raft_entry_t* log_get_from_idx(log_t* me_, int idx, int *n_etys)
 {
-    log_private_t* me = (log_private_t*)me_;
+    raft_log_private_t* me = (raft_log_private_t*)me_;
     int i;
 
     assert(0 <= idx - 1);
@@ -232,7 +212,7 @@ raft_entry_t* log_get_from_idx(log_t* me_, int idx, int *n_etys)
 
 raft_entry_t* log_get_at_idx(log_t* me_, int idx)
 {
-    log_private_t* me = (log_private_t*)me_;
+    raft_log_private_t* me = (raft_log_private_t*)me_;
     int i;
 
     if (idx == 0)
@@ -253,12 +233,12 @@ raft_entry_t* log_get_at_idx(log_t* me_, int idx)
 
 int log_count(log_t* me_)
 {
-    return ((log_private_t*)me_)->count;
+    return ((raft_log_private_t*)me_)->count;
 }
 
 int log_delete(log_t* me_, int idx)
 {
-    log_private_t* me = (log_private_t*)me_;
+    raft_log_private_t* me = (raft_log_private_t*)me_;
 
     if (0 == idx)
         return -1;
@@ -287,7 +267,7 @@ int log_delete(log_t* me_, int idx)
 
 int log_poll(log_t * me_, void** etyp)
 {
-    log_private_t* me = (log_private_t*)me_;
+    raft_log_private_t* me = (raft_log_private_t*)me_;
     int idx = me->base + 1;
 
     if (0 == me->count)
@@ -312,7 +292,7 @@ int log_poll(log_t * me_, void** etyp)
 
 raft_entry_t *log_peektail(log_t * me_)
 {
-    log_private_t* me = (log_private_t*)me_;
+    raft_log_private_t* me = (raft_log_private_t*)me_;
 
     if (0 == me->count)
         return NULL;
@@ -325,7 +305,7 @@ raft_entry_t *log_peektail(log_t * me_)
 
 void log_empty(log_t * me_)
 {
-    log_private_t* me = (log_private_t*)me_;
+    raft_log_private_t* me = (raft_log_private_t*)me_;
 
     me->front = 0;
     me->back = 0;
@@ -334,7 +314,7 @@ void log_empty(log_t * me_)
 
 void log_free(log_t * me_)
 {
-    log_private_t* me = (log_private_t*)me_;
+    raft_log_private_t* me = (raft_log_private_t*)me_;
 
     __raft_free(me->entries);
     __raft_free(me);
@@ -342,11 +322,11 @@ void log_free(log_t * me_)
 
 int log_get_current_idx(log_t* me_)
 {
-    log_private_t* me = (log_private_t*)me_;
+    raft_log_private_t* me = (raft_log_private_t*)me_;
     return log_count(me_) + me->base;
 }
 
 int log_get_base(log_t* me_)
 {
-    return ((log_private_t*)me_)->base;
+    return ((raft_log_private_t*)me_)->base;
 }

@@ -1,6 +1,27 @@
 #ifndef RAFT_LOG_H_
 #define RAFT_LOG_H_
 
+typedef struct
+{
+    /* size of array */
+    int size;
+
+    /* the amount of elements in the array */
+    int count;
+
+    /* position of the queue */
+    int front, back;
+
+    /* we compact the log, and thus need to increment the Base Log Index */
+    int base;
+
+    raft_entry_t* entries;
+
+    /* callbacks */
+    raft_cbs_t *cb;
+    void* raft;
+} raft_log_private_t;
+
 typedef void* log_t;
 
 log_t* log_new();

@@ -3940,9 +3940,8 @@ void T_estRaft_leader_recv_requestvote_responds_with_granting_if_term_is_higher(
     raft_recv_requestvote(r, raft_get_node(r, 3), &rv, &rvr);
     CuAssertTrue(tc, 1 == raft_is_follower(r));
 }
-#endif
 
-void TestRaft_leader_recv_appendentries_response_set_has_sufficient_logs_after_voting_committed(
+void T_estRaft_leader_recv_appendentries_response_set_has_sufficient_logs_after_voting_committed(
     CuTest * tc)
 {
     raft_cbs_t funcs = {
@@ -4008,4 +4007,5 @@ void TestRaft_leader_recv_appendentries_response_set_has_sufficient_logs_after_v
     raft_recv_appendentries_response(r, raft_get_node(r, 2), &aer);
     CuAssertIntEquals(tc, 2, has_sufficient_logs_flag);
 }
+#endif
 
