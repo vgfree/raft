@@ -133,6 +133,7 @@ void TestRaft_server_get_my_node(CuTest * tc)
 void TestRaft_server_idx_starts_at_1(CuTest * tc)
 {
     void *r = raft_new();
+    raft_set_callbacks(r, &generic_funcs, NULL);
     CuAssertTrue(tc, 0 == raft_get_current_idx(r));
 
     raft_entry_t ety = {};
@@ -270,6 +271,7 @@ void TestRaft_server_entry_append_increases_logidx(CuTest* tc)
     ety.term = 1;
 
     void *r = raft_new();
+    raft_set_callbacks(r, &generic_funcs, NULL);
     CuAssertTrue(tc, 0 == raft_get_current_idx(r));
     raft_append_entry(r, &ety);
     CuAssertTrue(tc, 1 == raft_get_current_idx(r));
@@ -286,6 +288,7 @@ void TestRaft_server_append_entry_means_entry_gets_current_term(CuTest* tc)
     ety.term = 1;
 
     void *r = raft_new();
+    raft_set_callbacks(r, &generic_funcs, NULL);
     CuAssertTrue(tc, 0 == raft_get_current_idx(r));
     raft_append_entry(r, &ety);
     CuAssertTrue(tc, 1 == raft_get_current_idx(r));
@@ -365,6 +368,7 @@ T_estRaft_server_append_entry_not_sucessful_if_entry_with_id_already_appended(
     ety.term = 1;
 
     r = raft_new();
+    raft_set_callbacks(r, &generic_funcs, NULL);
     CuAssertTrue(tc, 1 == raft_get_current_idx(r));
     raft_append_entry(r, &ety);
     raft_append_entry(r, &ety);
@@ -386,6 +390,7 @@ void TestRaft_server_entry_is_retrieveable_using_idx(CuTest* tc)
     char *str2 = "bbb";
 
     void *r = raft_new();
+    raft_set_callbacks(r, &generic_funcs, NULL);
 
     e1.term = 1;
     e1.id = 1;
@@ -418,6 +423,7 @@ void TestRaft_server_wont_apply_entry_if_we_dont_have_entry_to_apply(CuTest* tc)
 void TestRaft_server_wont_apply_entry_if_there_isnt_a_majority(CuTest* tc)
 {
     void *r = raft_new();
+    raft_set_callbacks(r, &generic_funcs, NULL);
     raft_add_node(r, NULL, 1, 1);
     raft_add_node(r, NULL, 2, 0);
     raft_add_node(r, NULL, 3, 0);
@@ -621,6 +627,7 @@ void TestRaft_server_election_timeout_does_promote_us_to_leader_if_there_is_only
 void TestRaft_server_recv_entry_auto_commits_if_we_are_the_only_node(CuTest * tc)
 {
     void *r = raft_new();
+    raft_set_callbacks(r, &generic_funcs, NULL);
     raft_add_node(r, NULL, 1, 1);
     raft_set_election_timeout(r, 1000);
     raft_become_leader(r);
@@ -642,6 +649,7 @@ void TestRaft_server_recv_entry_auto_commits_if_we_are_the_only_node(CuTest * tc
 void TestRaft_server_recv_entry_fails_if_there_is_already_a_voting_change(CuTest * tc)
 {
     void *r = raft_new();
+    raft_set_callbacks(r, &generic_funcs, NULL);
     raft_add_node(r, NULL, 1, 1);
     raft_set_election_timeout(r, 1000);
     raft_become_leader(r);
@@ -3406,6 +3414,7 @@ void TestRaft_leader_recv_entry_resets_election_timeout(
     CuTest * tc)
 {
     void *r = raft_new();
+    raft_set_callbacks(r, &generic_funcs, NULL);
     raft_set_election_timeout(r, 1000);
     raft_set_state(r, RAFT_STATE_LEADER);
 

@@ -107,6 +107,8 @@ void TestLog_get_at_idx(CuTest * tc)
     memset(&e3, 0, sizeof(raft_entry_t));
 
     l = log_new();
+    void *r = raft_new();
+    log_set_callbacks(l, NULL, r);
     e1.id = 1;
     CuAssertIntEquals(tc, 0, log_append_entry(l, &e1));
     e2.id = 2;
@@ -127,6 +129,8 @@ void TestLog_get_at_idx_returns_null_where_out_of_bounds(CuTest * tc)
     memset(&e1, 0, sizeof(raft_entry_t));
 
     l = log_new();
+    void *r = raft_new();
+    log_set_callbacks(l, NULL, r);
     CuAssertTrue(tc, NULL == log_get_at_idx(l, 0));
     CuAssertTrue(tc, NULL == log_get_at_idx(l, 1));
 
@@ -361,6 +365,8 @@ void TestLog_peektail(CuTest * tc)
     memset(&e3, 0, sizeof(raft_entry_t));
 
     l = log_new();
+    void *r = raft_new();
+    log_set_callbacks(l, NULL, r);
     e1.id = 1;
     CuAssertIntEquals(tc, 0, log_append_entry(l, &e1));
     e2.id = 2;
@@ -381,6 +387,8 @@ void T_estlog_cant_append_duplicates(CuTest * tc)
     e.id = 1;
 
     l = log_new();
+    void *r = raft_new();
+    log_set_callbacks(l, NULL, r);
     CuAssertTrue(tc, 1 == log_append_entry(l, &e));
     CuAssertTrue(tc, 1 == log_count(l));
 }
@@ -396,6 +404,8 @@ void TestLog_load_from_snapshot(CuTest * tc)
     memset(&e3, 0, sizeof(raft_entry_t));
 
     l = log_new();
+    void *r = raft_new();
+    log_set_callbacks(l, NULL, r);
     CuAssertIntEquals(tc, 0, log_get_current_idx(l));
     CuAssertIntEquals(tc, 0, log_load_from_snapshot(l, 10, 5));
     CuAssertIntEquals(tc, 10, log_get_current_idx(l));
@@ -415,6 +425,8 @@ void TestLog_load_from_snapshot_clears_log(CuTest * tc)
     memset(&e3, 0, sizeof(raft_entry_t));
 
     l = log_new();
+    void *r = raft_new();
+    log_set_callbacks(l, NULL, r);
 
     CuAssertIntEquals(tc, 0, log_append_entry(l, &e1));
     CuAssertIntEquals(tc, 0, log_append_entry(l, &e2));
@@ -470,6 +482,8 @@ void TestLog_front_and_back_pushed_across_boundary_with_enlargement_required(CuT
     e4.id = 4;
 
     l = log_alloc(1);
+    void *r = raft_new();
+    log_set_callbacks(l, NULL, r);
 
     raft_entry_t* ety;
 
@@ -512,6 +526,8 @@ void TestLog_delete_after_polling(CuTest * tc)
     e4.id = 4;
 
     l = log_alloc(1);
+    void *r = raft_new();
+    log_set_callbacks(l, NULL, r);
 
     raft_entry_t* ety;
 
