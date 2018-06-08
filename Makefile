@@ -27,7 +27,7 @@ SHAREDFLAGS = -shared
 SHAREDEXT = so
 endif
 
-OBJECTS = src/raft_server.o src/raft_server_properties.o src/raft_node.o src/raft_log.o
+OBJECTS = src/raft.o src/raft_server.o src/raft_node.o src/raft_cache.o
 
 all: static shared
 
@@ -54,7 +54,7 @@ static: $(OBJECTS)
 	ar -r libraft.a $(OBJECTS)
 
 .PHONY: tests
-tests: src/raft_server.c src/raft_server_properties.c src/raft_log.c src/raft_node.c $(TEST_DIR)/main_test.c $(TEST_DIR)/test_server.c $(TEST_DIR)/test_node.c $(TEST_DIR)/test_log.c $(TEST_DIR)/test_snapshotting.c $(TEST_DIR)/test_scenario.c $(TEST_DIR)/mock_send_functions.c $(TEST_DIR)/CuTest.c $(LLQUEUE_DIR)/linked_list_queue.c
+tests: src/raft.c src/raft_server.c src/raft_cache.c src/raft_node.c $(TEST_DIR)/main_test.c $(TEST_DIR)/test_server.c $(TEST_DIR)/test_node.c $(TEST_DIR)/test_log.c $(TEST_DIR)/test_snapshotting.c $(TEST_DIR)/test_scenario.c $(TEST_DIR)/mock_send_functions.c $(TEST_DIR)/CuTest.c $(LLQUEUE_DIR)/linked_list_queue.c
 	$(CC) $(CFLAGS) -o tests_main $^
 	./tests_main
 	gcov raft_server.c
@@ -89,7 +89,7 @@ do_infer:
 	infer -- make
 
 clean:
-	@rm -f $(TEST_DIR)/main_test.c *.o $(GCOV_OUTPUT); \
+	@rm -f $(VPATH)/*.o $(VPATH)/*.gcno $(TEST_DIR)/main_test.c $(GCOV_OUTPUT); \
 	if [ -f "libraft.$(SHAREDEXT)" ]; then rm libraft.$(SHAREDEXT); fi;\
 	if [ -f libraft.a ]; then rm libraft.a; fi;\
 	if [ -f tests_main ]; then rm tests_main; fi;

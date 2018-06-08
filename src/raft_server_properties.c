@@ -16,246 +16,253 @@
 #include <stdarg.h>
 
 #include "raft.h"
-#include "_raft_log.h"
 #include "raft_private.h"
 
-void raft_set_election_timeout(raft_server_t* me_, int millisec)
+static void raft_randomize_election_timeout(raft_server_private_t *me)
 {
-    raft_server_private_t* me = (raft_server_private_t*)me_;
-    me->election_timeout = millisec;
-    raft_randomize_election_timeout(me_);
+    /* [election_timeout, 2 * election_timeout) */
+    me->election_timeout_rand = me->election_timeout + rand() % me->election_timeout;
+    __log(me, NULL, "randomize election timeout to %d", me->election_timeout_rand);
 }
 
-void raft_set_request_timeout(raft_server_t* me_, int millisec)
+void raft_server_set_election_timeout(raft_server_private_t *me, int millisec)
 {
-    raft_server_private_t* me = (raft_server_private_t*)me_;
+    me->election_timeout = millisec;
+    raft_randomize_election_timeout(me);
+}
+
+void raft_server_set_request_timeout(raft_server_private_t *me, int millisec)
+{
     me->request_timeout = millisec;
 }
 
-raft_node_id_t raft_get_nodeid(raft_server_t* me_)
+raft_node_id_t raft_server_get_my_nodeid(raft_server_private_t *me)
 {
-    raft_server_private_t* me = (raft_server_private_t*)me_;
-    if (!me->node)
+    if (!me->node) {
         return -1;
+    }
+
     return raft_node_get_id(me->node);
 }
 
-int raft_get_election_timeout(raft_server_t* me_)
+int raft_server_get_election_timeout(raft_server_private_t *me)
 {
-    return ((raft_server_private_t*)me_)->election_timeout;
+    return me->election_timeout;
 }
 
-int raft_get_request_timeout(raft_server_t* me_)
+int raft_server_get_request_timeout(raft_server_private_t *me)
 {
-    return ((raft_server_private_t*)me_)->request_timeout;
+    return me->request_timeout;
 }
 
-int raft_get_num_nodes(raft_server_t* me_)
+int raft_server_get_num_nodes(raft_server_private_t *me)
 {
-    return ((raft_server_private_t*)me_)->num_nodes;
+    return me->num_nodes;
 }
 
-int raft_get_num_voting_nodes(raft_server_t* me_)
+int raft_server_get_num_voting_nodes(raft_server_private_t *me)
 {
-    raft_server_private_t* me = (raft_server_private_t*)me_;
     int i, num = 0;
-    for (i = 0; i < me->num_nodes; i++)
-        if (raft_node_is_active(me->nodes[i]) && raft_node_is_voting(me->nodes[i]))
+
+    for (i = 0; i < me->num_nodes; i++) {
+        if (raft_node_is_active((raft_node_private_t *)me->nodes[i]) && raft_node_is_voting((raft_node_private_t *)me->nodes[i])) {
             num++;
+        }
+    }
+
     return num;
 }
 
-int raft_get_timeout_elapsed(raft_server_t* me_)
+int raft_server_get_timeout_elapsed(raft_server_private_t *me)
 {
-    return ((raft_server_private_t*)me_)->timeout_elapsed;
+    return me->timeout_elapsed;
 }
 
-raft_index_t raft_get_log_count(raft_server_t* me_)
+raft_node_id_t raft_server_get_voted_for(raft_server_private_t *me)
 {
-    raft_server_private_t* me = (raft_server_private_t*)me_;
-    return log_count(me->log);
-}
-
-int raft_get_voted_for(raft_server_t* me_)
-{
-    raft_server_private_t* me = (raft_server_private_t*)me_;
     return me->voted_for;
 }
 
-int raft_set_current_term(raft_server_t* me_, const raft_term_t term)
+int raft_server_set_voted_for(raft_server_private_t *me, const raft_node_id_t id)
 {
-    raft_server_private_t* me = (raft_server_private_t*)me_;
-    if (me->current_term < term)
-    {
-        int voted_for = -1;
-        if (me->cb.persist_term)
-        {
-            int e = me->cb.persist_term(me_, me->udata, term, voted_for);
-            if (0 != e)
-                return e;
+    if (me->cb.persist_vote) {
+        int e = me->cb.persist_vote((raft_server_t *)me, me->udata, id);
+
+        if (0 != e) {
+            return e;
         }
+    }
+
+    me->voted_for = id;
+    return 0;
+}
+
+int raft_server_set_current_term(raft_server_private_t *me, const raft_term_t term)
+{
+    if (me->current_term < term) {
+        int voted_for = -1;// TODO: remove voted_for
+
+        if (me->cb.persist_term) {
+            int e = me->cb.persist_term((raft_server_t *)me, me->udata, term, voted_for);
+
+            if (0 != e) {
+                return e;
+            }
+        }
+
         me->current_term = term;
         me->voted_for = voted_for;
     }
+
     return 0;
 }
 
-raft_term_t raft_get_current_term(raft_server_t* me_)
+raft_term_t raft_server_get_current_term(raft_server_private_t *me)
 {
-    return ((raft_server_private_t*)me_)->current_term;
+    return me->current_term;
 }
 
-raft_index_t raft_get_current_idx(raft_server_t* me_)
+void raft_server_set_commit_idx(raft_server_private_t *me, raft_index_t idx)
 {
-    raft_server_private_t* me = (raft_server_private_t*)me_;
-    return log_get_current_idx(me->log);
-}
-
-void raft_set_commit_idx(raft_server_t* me_, raft_index_t idx)
-{
-    raft_server_private_t* me = (raft_server_private_t*)me_;
     assert(me->commit_idx <= idx);
-    assert(idx <= raft_get_current_idx(me_));
+    assert(idx <= raft_cache_get_entry_last_idx(me->log));
     me->commit_idx = idx;
 }
 
-void raft_set_last_applied_idx(raft_server_t* me_, raft_index_t idx)
+void raft_server_set_last_applied_idx(raft_server_private_t *me, raft_index_t idx)
 {
-    raft_server_private_t* me = (raft_server_private_t*)me_;
     me->last_applied_idx = idx;
 }
 
-raft_index_t raft_get_last_applied_idx(raft_server_t* me_)
+raft_index_t raft_server_get_last_applied_idx(raft_server_private_t *me)
 {
-    return ((raft_server_private_t*)me_)->last_applied_idx;
+    return me->last_applied_idx;
 }
 
-raft_index_t raft_get_commit_idx(raft_server_t* me_)
+void raft_server_set_last_applying_idx(raft_server_private_t *me, raft_index_t idx)
 {
-    return ((raft_server_private_t*)me_)->commit_idx;
+    me->last_applying_idx = idx;
 }
 
-void raft_set_state(raft_server_t* me_, int state)
+raft_index_t raft_server_get_last_applying_idx(raft_server_private_t *me)
 {
-    raft_server_private_t* me = (raft_server_private_t*)me_;
+    return me->last_applying_idx;
+}
+
+raft_index_t raft_server_get_commit_idx(raft_server_private_t *me)
+{
+    return me->commit_idx;
+}
+
+void raft_server_set_state(raft_server_private_t *me, int state)
+{
     /* if became the leader, then update the current leader entry */
-    if (state == RAFT_STATE_LEADER)
+    if (state == RAFT_STATE_LEADER) {
         me->current_leader = me->node;
+    } else {
+        me->current_leader = NULL;
+    }
+
     me->state = state;
+    me->timeout_elapsed = 0;
+    raft_randomize_election_timeout(me);
 }
 
-int raft_get_state(raft_server_t* me_)
+int raft_server_get_state(raft_server_private_t *me)
 {
-    return ((raft_server_private_t*)me_)->state;
+    return me->state;
 }
 
-raft_node_t* raft_get_node(raft_server_t *me_, raft_node_id_t nodeid)
+raft_node_t *raft_server_get_node(raft_server_private_t *me, raft_node_id_t nodeid)
 {
-    raft_server_private_t* me = (raft_server_private_t*)me_;
     int i;
 
-    for (i = 0; i < me->num_nodes; i++)
-        if (nodeid == raft_node_get_id(me->nodes[i]))
+    for (i = 0; i < me->num_nodes; i++) {
+        if (nodeid == raft_node_get_id(me->nodes[i])) {
             return me->nodes[i];
+        }
+    }
 
     return NULL;
 }
 
-raft_node_t* raft_get_my_node(raft_server_t *me_)
+raft_node_t *raft_server_get_my_node(raft_server_private_t *me)
 {
-    raft_server_private_t* me = (raft_server_private_t*)me_;
     int i;
 
-    for (i = 0; i < me->num_nodes; i++)
-        if (raft_get_nodeid(me_) == raft_node_get_id(me->nodes[i]))
+    for (i = 0; i < me->num_nodes; i++) {
+        if (raft_server_get_my_nodeid(me) == raft_node_get_id(me->nodes[i])) {
             return me->nodes[i];
+        }
+    }
 
     return NULL;
 }
 
-raft_node_t* raft_get_node_from_idx(raft_server_t* me_, const raft_index_t idx)
+raft_node_t *raft_server_get_node_by_idx(raft_server_private_t *me, const int idx)
 {
-    raft_server_private_t* me = (raft_server_private_t*)me_;
     return me->nodes[idx];
 }
 
-raft_node_id_t raft_get_current_leader(raft_server_t* me_)
+raft_node_id_t raft_server_get_current_leader(raft_server_private_t *me)
 {
-    raft_server_private_t* me = (void*)me_;
-    if (me->current_leader)
+    if (me->current_leader) {
         return raft_node_get_id(me->current_leader);
+    }
+
     return -1;
 }
 
-raft_node_t* raft_get_current_leader_node(raft_server_t* me_)
+raft_node_t *raft_server_get_current_leader_node(raft_server_private_t *me)
 {
-    raft_server_private_t* me = (void*)me_;
     return me->current_leader;
 }
 
-void* raft_get_udata(raft_server_t* me_)
+void *raft_server_get_udata(raft_server_private_t *me)
 {
-    return ((raft_server_private_t*)me_)->udata;
+    return me->udata;
 }
 
-int raft_is_follower(raft_server_t* me_)
+int raft_server_is_follower(raft_server_private_t *me)
 {
-    return raft_get_state(me_) == RAFT_STATE_FOLLOWER;
+    return raft_server_get_state(me) == RAFT_STATE_FOLLOWER;
 }
 
-int raft_is_leader(raft_server_t* me_)
+int raft_server_is_leader(raft_server_private_t *me)
 {
-    return raft_get_state(me_) == RAFT_STATE_LEADER;
+    return raft_server_get_state(me) == RAFT_STATE_LEADER;
 }
 
-int raft_is_candidate(raft_server_t* me_)
+int raft_server_is_candidate(raft_server_private_t *me)
 {
-    return raft_get_state(me_) == RAFT_STATE_CANDIDATE;
+    return raft_server_get_state(me) == RAFT_STATE_CANDIDATE;
 }
 
-raft_term_t raft_get_last_log_term(raft_server_t* me_)
+int raft_is_connected(raft_server_t *me_)
 {
-    raft_index_t current_idx = raft_get_current_idx(me_);
-    if (0 < current_idx)
-    {
-        raft_entry_t* ety = raft_get_entry_from_idx(me_, current_idx);
-        if (ety)
-            return ety->term;
-    }
-    return 0;
-}
-
-int raft_is_connected(raft_server_t* me_)
-{
-    return ((raft_server_private_t*)me_)->connected;
+    return ((raft_server_private_t *)me_)->connected;
 }
 
 int raft_snapshot_is_in_progress(raft_server_t *me_)
 {
-    return ((raft_server_private_t*)me_)->snapshot_in_progress;
-}
-
-raft_entry_t *raft_get_last_applied_entry(raft_server_t *me_)
-{
-    raft_server_private_t* me = (raft_server_private_t*)me_;
-    if (raft_get_last_applied_idx(me_) == 0)
-        return NULL;
-    return log_get_at_idx(me->log, raft_get_last_applied_idx(me_));
+    return ((raft_server_private_t *)me_)->snapshot_in_progress;
 }
 
 raft_index_t raft_get_snapshot_last_idx(raft_server_t *me_)
 {
-    return ((raft_server_private_t*)me_)->snapshot_last_idx;
+    return ((raft_server_private_t *)me_)->snapshot_last_idx;
 }
 
 raft_term_t raft_get_snapshot_last_term(raft_server_t *me_)
 {
-    return ((raft_server_private_t*)me_)->snapshot_last_term;
+    return ((raft_server_private_t *)me_)->snapshot_last_term;
 }
 
 void raft_set_snapshot_metadata(raft_server_t *me_, raft_term_t term, raft_index_t idx)
 {
-    raft_server_private_t* me = (raft_server_private_t*)me_;
+    raft_server_private_t *me = (raft_server_private_t *)me_;
+
     me->snapshot_last_term = term;
     me->snapshot_last_idx = idx;
 }
+

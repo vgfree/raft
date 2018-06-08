@@ -7,18 +7,20 @@
 #include "CuTest.h"
 
 #include "raft.h"
-#include "_raft_log.h"
 #include "raft_private.h"
 
-void TestRaft_is_voting_by_default(CuTest * tc)
+void TestRaft_is_voting_by_default(CuTest *tc)
 {
-    raft_node_t *p = raft_node_new((void*)1, 1);
+    raft_node_private_t *p = raft_node_new((void *)1, 1);
+
     CuAssertTrue(tc, raft_node_is_voting(p));
 }
 
-void TestRaft_node_set_nextIdx(CuTest * tc)
+void TestRaft_node_set_nextIdx(CuTest *tc)
 {
-    raft_node_t *p = raft_node_new((void*)1, 1);
-    raft_node_set_next_idx(p, 3);
+    raft_node_t *p = (raft_node_t *)raft_node_new((void *)1, 1);
+
+    raft_node_set_next_idx((raft_node_private_t *)p, 3);
     CuAssertTrue(tc, 3 == raft_node_get_next_idx(p));
 }
+

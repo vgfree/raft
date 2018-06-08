@@ -15,7 +15,7 @@ class Libraft(object):
             """
             """,
             sources="""
-                src/raft_log.c
+                src/raft_cache.c
                 src/raft_server.c
                 src/raft_server_properties.c
                 src/raft_node.c
@@ -34,7 +34,7 @@ class Libraft(object):
                  if not line.startswith('#')])
 
         ffi.cdef(load('include/raft.h'))
-        ffi.cdef(load('include/_raft_log.h'))
+        ffi.cdef(load('include/_raft_cache.h'))
 
 
 commands = one_of(
@@ -77,7 +77,7 @@ class CoreTestCase(unittest.TestCase):
         r = self.r.lib
 
         unique_id = 1
-        l = r.log_alloc(1)
+        l = r.raft_cache_make(1)
 
         log = Log()
 
@@ -87,7 +87,7 @@ class CoreTestCase(unittest.TestCase):
                 entry.id = unique_id
                 unique_id += 1
 
-                ret = r.log_append_entry(l, entry)
+                ret = r.raft_cache_push_alone_entry(l, entry)
                 assert ret == 0
 
                 log.append(entry)
@@ -96,7 +96,7 @@ class CoreTestCase(unittest.TestCase):
                 entry_ptr = self.r.ffi.new('void**')
 
                 if log.entries:
-                    ret = r.log_poll(l, entry_ptr)
+                    ret = r.raft_cache_pop_head_entry(l, entry_ptr)
                     assert ret == 0
 
                     ety_expected = log.poll()
@@ -106,13 +106,13 @@ class CoreTestCase(unittest.TestCase):
             elif isinstance(cmd, int):
                 if log.entries:
                     log.delete(cmd)
-                    ret = r.log_delete(l, cmd)
+                    ret = r.raft_server_del_entries_after_from_idx(l, cmd)
                     assert ret == 0
 
             else:
                 assert False
 
-            self.assertEqual(r.log_count(l), log.count())
+            self.assertEqual(r.raft_cache_count(l), log.count())
 
 
 if __name__ == '__main__':

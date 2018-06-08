@@ -1,8 +1,8 @@
-
 #ifndef RAFT_DEFS_H_
 #define RAFT_DEFS_H_
 
 #include <stddef.h>
+#include <stdbool.h>
 
 /**
  * Unique entry ids are mostly used for debugging and nothing else,
@@ -28,3 +28,4 @@ typedef long int raft_index_t;
 typedef int raft_node_id_t;
 
 #endif  /* RAFT_DEFS_H_ */
+

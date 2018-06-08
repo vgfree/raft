@@ -6,12 +6,10 @@
   "keywords": ["raft", "consensus", "protocol"],
   "src": [
     "include/raft.h",
-    "src/raft.c",
-    "include/_raft_log.h",
-    "src/raft_log.c",
     "include/raft_private.h",
+    "src/raft.c",
+    "src/raft_cache.c",
     "src/raft_node.c",
-    "src/raft_server.c",
-    "src/raft_server_properties.c"
+    "src/raft_server.c"
   ]
 }
