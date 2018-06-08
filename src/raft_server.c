@@ -63,7 +63,7 @@ raft_server_private_t *raft_server_new(void)
         return NULL;
     }
 
-    me->voting_cfg_change_log_idx = -1;
+    //me->voting_cfg_change_log_idx = -1;
     raft_server_set_state(me, RAFT_STATE_FOLLOWER);
 
     me->snapshot_in_progress = 0;
@@ -529,12 +529,19 @@ int raft_server_recv_appendentries(
 
         /* 2. Reply false if log doesn't contain an entry at prevLogIndex
          *   whose term matches prevLogTerm (§5.3) */
-        if (!term) {
+        if (ae->prev_log_idx == me->snapshot_last_idx) {
+            /* Is a snapshot */
+            if (me->snapshot_last_term != ae->prev_log_term)
+            {
+                /* Should never happen; something is seriously wrong! */
+                __log(me, node, "Snapshot AE prev conflicts with committed entry");
+                e = RAFT_ERR_SHUTDOWN;
+                goto out;
+            }
+        } else if (!term) {
             __log(me, node, "AE no log at prev_idx %d", ae->prev_log_idx);
             goto out;
-        }
-
-        if (term != ae->prev_log_term) {
+        } else if (term != ae->prev_log_term) {
             __log(me, node, "AE term doesn't match prev_term (ie. %d vs %d) ci:%d comi:%d lcomi:%d pli:%d",
                 term, ae->prev_log_term, raft_cache_get_entry_last_idx(me->log),
                 raft_server_get_commit_idx(me), ae->leader_commit, ae->prev_log_idx);
@@ -671,13 +678,21 @@ static int __should_grant_vote(raft_server_private_t *me, msg_requestvote_t *vr)
         return 1;
     }
 
-    raft_entry_t *ety = raft_cache_dup_at_idx(me->log, current_idx);
+    int ety_term = raft_cache_get_term_at_idx(me->log, current_idx);
 
-    if (ety->term < vr->last_log_term) {
+    // TODO: add test
+    if (!ety_term) {
+        ety_term = (me->snapshot_last_idx == current_idx) ? me->snapshot_last_term : 0;
+    }
+    if (!ety_term) {
+        return 0;
+    }
+
+    if (ety_term < vr->last_log_term) {
         return 1;
     }
 
-    if ((vr->last_log_term == ety->term) && (current_idx <= vr->last_log_idx)) {
+    if ((vr->last_log_term == ety_term) && (current_idx <= vr->last_log_idx)) {
         return 1;
     }
 
@@ -727,7 +742,7 @@ int raft_recv_requestvote(raft_server_t *me_,
             r->vote_granted = 0;
         }
 
-        /* there must be in an election. */
+        /* must be in an election. */
         me->current_leader = NULL;
 
         me->timeout_elapsed = 0;
@@ -984,17 +999,15 @@ int raft_server_send_appendentries(raft_server_private_t *me, raft_node_t *node)
     ae.prev_log_term = 0;
 
     if (1 < next_idx) {
-        ae.prev_log_idx = next_idx - 1;
+        raft_term_t prev_term = raft_cache_get_term_at_idx(me->log, next_idx - 1);
 
-        raft_entry_t *prev_ety = raft_cache_dup_at_idx(me->log, next_idx - 1);
-
-        if (prev_ety) {
-            ae.prev_log_term = prev_ety->term;
-        } else {
+        if (!prev_term) {
+            ae.prev_log_idx = me->snapshot_last_idx;
             ae.prev_log_term = me->snapshot_last_term;
+        } else {
+            ae.prev_log_idx = next_idx - 1;
+            ae.prev_log_term = prev_term;
         }
-
-        raft_entry_free(prev_ety);
     }
 
     __log(me, node, "sending appendentries node: ci:%d comi:%d t:%d lc:%d pli:%d plt:%d",
@@ -1439,6 +1452,9 @@ int raft_end_snapshot(raft_server_t *me_)
         return -1;
     }
 
+    assert(raft_get_num_snapshottable_logs(me_) != 0);
+    assert(me->snapshot_last_idx == raft_server_get_commit_idx(me));
+
     /* If needed, remove compacted logs */
     raft_index_t    end = raft_server_get_commit_idx(me);
     int             e = raft_server_del_entries_ahead_from_idx(me, end);
@@ -1569,22 +1585,7 @@ int raft_end_load_snapshot(raft_server_t *me_)
 int log_load_from_snapshot(raft_server_private_t *me, raft_index_t idx, raft_term_t term)
 {
     // raft_cache_empty(me->log);//TODO: add
-
-    raft_entry_t ety;
-
-    ety.data.len = 0;
-    ety.id = 1;
-    ety.term = term;
-    ety.type = RAFT_LOGTYPE_SNAPSHOT;
-
-    int e = 0;// log_append_entry(me, &ety);
-
-    if (e != 0) {
-        assert(0);
-        return e;
-    }
-
-    me->log->base = idx - 1;
+    me->log->base = idx;
 
     return 0;
 }
