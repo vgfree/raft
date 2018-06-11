@@ -689,8 +689,8 @@ void TestLog_get_from_idx_with_base_off_by_one(CuTest *tc)
     raft_entry_t *ety;
 
     /* append append */
-    CuAssertIntEquals(tc, 0, log_append_entry(l, &e1));
-    CuAssertIntEquals(tc, 0, log_append_entry(l, &e2));
+    CuAssertIntEquals(tc, 0, raft_cache_push_batch_entries(l, &e1));
+    CuAssertIntEquals(tc, 0, raft_cache_push_batch_entries(l, &e2));
     CuAssertIntEquals(tc, 2, raft_cache_count(l));
 
     /* poll */

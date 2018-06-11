@@ -153,12 +153,12 @@ When this happens we need to:
 
 **Append the entry to our log**
 
-We call ``raft_recv_entry`` when we want to append the entry to the log.
+We call ``raft_retain_entries`` when we want to append the entry to the log.
 
 .. code-block:: c
 
     msg_entry_response_t response;
-    e = raft_recv_entry(raft,  &entry, &response);
+    e = raft_retain_entries(raft,  &entry, &response);
 
 You should populate the ``entry`` struct with the log entry the client has sent. After the call completes the ``response`` parameter is populated and can be used by the ``raft_msg_entry_response_committed`` function to check if the log entry has been committed or not.
 
@@ -166,7 +166,7 @@ You should populate the ``entry`` struct with the log entry the client has sent.
 
 When the server receives a log entry from the client, it has to block until the entry is committed. This is necessary as our Raft server has to replicate the log entry with the other peers of the Raft cluster.
 
-The ``raft_recv_entry`` function does not block! This means you will need to implement the blocking functionality yourself.  
+The ``raft_retain_entries`` function does not block! This means you will need to implement the blocking functionality yourself.  
 
 *Example below is from the ticketd client thread. This shows that we need to block on client requests. ticketd does the blocking by waiting on a conditional, which is signalled by the peer thread. The separate thread is responsible for handling traffic between Raft peers.*
 
@@ -174,7 +174,7 @@ The ``raft_recv_entry`` function does not block! This means you will need to imp
 
     msg_entry_response_t response;
 
-    e = raft_recv_entry(sv->raft, &entry, &response);
+    e = raft_retain_entries(sv->raft, &entry, &response);
     if (0 != e)
         return h2oh_respond_with_error(req, 500, "BAD");
 
@@ -443,17 +443,17 @@ It's highly recommended that when a node is added to the cluster that its node I
 
 **Adding a node**
 
-1. Append the configuration change using ``raft_recv_entry``. Make sure the entry has the type set to ``RAFT_LOGTYPE_ADD_NONVOTING_NODE``
+1. Append the configuration change using ``raft_retain_entries``. Make sure the entry has the type set to ``RAFT_LOGTYPE_ADD_NONVOTING_NODE``
 
 2. Inside the ``log_offer`` callback, when a log with type ``RAFT_LOGTYPE_ADD_NONVOTING_NODE`` is detected, we add a non-voting node by calling ``raft_add_non_voting_node``.
 
-3. Once ``node_has_sufficient_logs`` callback fires, append a configuration finalization log entry using ``raft_recv_entry``. Make sure the entry has a type set to ``RAFT_LOGTYPE_ADD_NODE``
+3. Once ``node_has_sufficient_logs`` callback fires, append a configuration finalization log entry using ``raft_retain_entries``. Make sure the entry has a type set to ``RAFT_LOGTYPE_ADD_NODE``
 
 4. Inside the ``log_offer`` callback, when you receive a log with type ``RAFT_LOGTYPE_ADD_NODE``, we then set the node to voting by using ``raft_add_node``
 
 **Removing a node**
 
-1. Append the configuration change using ``raft_recv_entry``. Make sure the entry has the type set to ``RAFT_LOGTYPE_REMOVE_NODE``
+1. Append the configuration change using ``raft_retain_entries``. Make sure the entry has the type set to ``RAFT_LOGTYPE_REMOVE_NODE``
 
 2. Inside the ``log_offer`` callback, when a log with type ``RAFT_LOGTYPE_REMOVE_NODE`` is detected, we remove the node by calling ``raft_remove_node``
 

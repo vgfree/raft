@@ -278,3 +278,25 @@ int raft_recv_appendentries(raft_server_t   *me,
     return raft_server_recv_appendentries((raft_server_private_t *)me, node, ae);
 }
 
+int raft_recv_appendentries_response(raft_server_t  *me,
+    raft_node_t                                     *node,
+    msg_appendentries_response_t                    *r)
+{
+    return raft_server_recv_appendentries_response((raft_server_private_t *)me, node, r);
+}
+
+int raft_recv_requestvote(raft_server_t *me, raft_node_t *node, msg_requestvote_t *vr)
+{
+    return raft_server_recv_requestvote((raft_server_private_t *)me, node, vr);
+}
+
+int raft_recv_requestvote_response(raft_server_t *me, raft_node_t *node, msg_requestvote_response_t *r)
+{
+    return raft_server_recv_requestvote_response((raft_server_private_t *)me, node, r);
+}
+
+int raft_retain_entries(raft_server_t *me, msg_batch_t *bat)
+{
+    return raft_server_retain_entries((raft_server_private_t *)me, bat);
+}
+

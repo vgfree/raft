@@ -60,10 +60,8 @@ void raft_node_set_next_idx(raft_node_private_t *me, raft_index_t nextIdx)
     me->next_idx = nextIdx < 1 ? 1 : nextIdx;
 }
 
-raft_index_t raft_node_get_match_idx(raft_node_t *me_)
+raft_index_t raft_node_get_match_idx(raft_node_private_t *me)
 {
-    raft_node_private_t *me = (raft_node_private_t *)me_;
-
     return me->match_idx;
 }
 

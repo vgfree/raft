@@ -7,7 +7,7 @@ typedef struct
 {
     void            *udata;
 
-    raft_index_t    next_idx;
+    raft_index_t    next_idx;   /*next need send start index*/
     raft_index_t    match_idx;
 
     int             flags;
@@ -22,6 +22,10 @@ void raft_node_free(raft_node_private_t *me);
 void raft_node_set_next_idx(raft_node_private_t *me, raft_index_t nextIdx);
 
 void raft_node_set_match_idx(raft_node_private_t *me, raft_index_t matchIdx);
+
+/**
+ * @return this node's match index */
+raft_index_t raft_node_get_match_idx(raft_node_private_t *me);
 
 void raft_node_fix_vote_for_me(raft_node_private_t *me, const int vote);
 

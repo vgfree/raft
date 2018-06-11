@@ -55,6 +55,7 @@ typedef struct
     raft_index_t            voting_cfg_change_log_idx;
 
     int                     append_evts;
+    int                     retain_evts;
 
     /* Our membership with the cluster is confirmed (ie. configuration log was
      * committed) */
@@ -138,6 +139,11 @@ int raft_server_set_current_term(raft_server_private_t *me, const raft_term_t te
 
 raft_term_t raft_server_get_current_term(raft_server_private_t *me);
 
+/** Check if a voting change is in progress
+ * @param[in] raft The Raft server
+ * @return 1 if a voting change is in progress */
+int raft_server_voting_change_is_in_progress(raft_server_private_t *me);
+
 /**
  * @return number of votes this server has received this election */
 int raft_server_get_nvotes_for_me(raft_server_private_t *me);
@@ -203,18 +209,41 @@ int raft_server_async_append_entries_start(raft_server_private_t *me, raft_node_
 int raft_server_async_append_entries_finish(raft_server_private_t *me, raft_node_t *node, bool can_update_commit, raft_index_t leader_commit,
     int rsp_success, raft_index_t rsp_current_idx, raft_index_t rsp_first_idx);
 
-int raft_server_send_requestvote(raft_server_private_t *me, raft_node_t *node);
+int raft_server_periodic(raft_server_private_t *me, int msec_since_last_period);
 
 int raft_server_send_appendentries(raft_server_private_t *me, raft_node_t *node);
 
+int raft_server_recv_appendentries(raft_server_private_t *me, raft_node_t *node, msg_appendentries_t *ae);
+
 int raft_server_send_appendentries_response(raft_server_private_t *me, raft_node_t *node, msg_appendentries_response_t *r);
 
-int raft_server_periodic(raft_server_private_t *me, int msec_since_last_period);
+int raft_server_recv_appendentries_response(raft_server_private_t *me, raft_node_t *node, msg_appendentries_response_t *r);
 
-int raft_server_recv_appendentries(
-    raft_server_private_t   *me,
-    raft_node_t             *node,
-    msg_appendentries_t     *ae);
+int raft_server_send_requestvote(raft_server_private_t *me, raft_node_t *node);
+
+int raft_server_recv_requestvote(raft_server_private_t *me, raft_node_t *node, msg_requestvote_t *vr);
+
+int raft_server_send_requestvote_response(raft_server_private_t *me, raft_node_t *node, msg_requestvote_response_t *r);
+
+int raft_server_recv_requestvote_response(raft_server_private_t *me, raft_node_t *node, msg_requestvote_response_t *r);
+
+int raft_server_retain_entries(raft_server_private_t *me, msg_batch_t *bat);
+
+void do_retain_entries_cache(raft_server_private_t *me, bool ok, raft_batch_t *bat, raft_index_t idx);
+
+/**
+ * Add entries to the server's log.
+ * This should be used to reload persistent state, ie. the commit log.
+ * Don't add entries if we've already added these entries (based off ID)
+ * Don't add entries with ID=0
+ * @param[in] bat The entraies to be appended
+ * @return
+ *  0 on success;
+ *  RAFT_ERR_SHUTDOWN server should shutdown
+ *  RAFT_ERR_NOMEM memory allocation failure */
+int raft_server_async_retain_entries_start(raft_server_private_t *me, raft_batch_t *bat, raft_index_t idx);
+
+int raft_server_async_retain_entries_finish(raft_server_private_t *me, int result, int n_entries);
 
 #endif /* ifndef _RAFT_SERVER_H_ */
 

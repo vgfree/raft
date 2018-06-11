@@ -511,7 +511,7 @@ class Network(object):
         if not lib.raft_is_leader(leader.raft):
             return
 
-        if lib.raft_voting_change_is_in_progress(leader.raft):
+        if lib.raft_server_voting_change_is_in_progress(leader.raft):
             # logging.error('{} voting change in progress'.format(server))
             return
 
@@ -720,7 +720,7 @@ class RaftServer(object):
     def recv_entry(self, ety):
         # FIXME: leak
         response = ffi.new('msg_entry_response_t*')
-        return lib.raft_recv_entry(self.raft, ety, response)
+        return lib.raft_retain_entries(self.raft, ety, response)
 
     def get_entry(self, idx):
         idx = idx - lib.raft_get_snapshot_last_idx(self.raft)
@@ -1049,7 +1049,7 @@ class RaftServer(object):
             "peers": lib.raft_get_num_nodes(self.raft),
             "voting_peers": lib.raft_get_num_voting_nodes(self.raft),
             "connection_status": connectstatus2str(self.connection_status),
-            "voting_change_in_progress": lib.raft_voting_change_is_in_progress(self.raft),
+            "voting_change_in_progress": lib.raft_server_voting_change_is_in_progress(self.raft),
             "removed": getattr(self, 'removed', False),
         }
 

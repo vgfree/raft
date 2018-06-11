@@ -21,6 +21,7 @@ typedef enum
     RAFT_ERR_NEEDS_SNAPSHOT = -6,
     RAFT_ERR_SNAPSHOT_IN_PROGRESS = -7,
     RAFT_ERR_SNAPSHOT_ALREADY_LOADED = -8,
+    RAFT_ERR_NEEDS_WAIT = -9,
     RAFT_ERR_LAST = -100,
 } raft_error_e;
 
@@ -160,20 +161,6 @@ raft_entry_t *raft_batch_take_entry(raft_batch_t *bat, int i);
 typedef raft_entry_t msg_entry_t;
 typedef raft_batch_t msg_batch_t;
 
-/** Entry message response.
- * Indicates to client if entry was committed or not. */
-typedef struct
-{
-    /** the entry's unique ID */
-    raft_entry_id_t id;
-
-    /** the entry's term */
-    raft_term_t     term;
-
-    /** the entry's index */
-    raft_index_t    idx;
-} msg_entry_response_t;
-
 /** Vote request message.
  * Sent to nodes when a server wants to become leader.
  * This message could force a leader/candidate to become a follower. */
@@ -268,6 +255,21 @@ typedef int (
     void                *user_data,
     raft_node_t         *node,
     msg_requestvote_t   *msg
+    );
+
+/** Callback for sending request vote response messages.
+ * @param[in] raft The Raft server making this callback
+ * @param[in] user_data User data that is passed from Raft server
+ * @param[in] node The node's ID that we are sending this message to
+ * @param[in] msg The request vote response message to be sent
+ * @return 0 on success */
+typedef int (
+*func_send_requestvote_response_f
+)   (
+    raft_server_t               *raft,
+    void                        *user_data,
+    raft_node_t                 *node,
+    msg_requestvote_response_t  *msg
     );
 
 /** Callback for sending append entries messages.
@@ -415,7 +417,18 @@ typedef int (
     raft_server_t   *raft,
     void            *user_data,
     raft_batch_t    *batch,
-    int             start_idx
+    raft_index_t    start_idx
+    );
+
+typedef int (
+*func_logretain_done_event_f
+)   (
+    raft_server_t   *raft,
+    void            *user_data,
+    int             result,
+    raft_term_t     term,
+    raft_index_t    start_idx,
+    raft_index_t    end_idx
     );
 
 typedef int (
@@ -424,7 +437,7 @@ typedef int (
     raft_server_t   *raft,
     void            *user_data,
     raft_batch_t    *batch,
-    int             start_idx,
+    raft_index_t    start_idx,
     raft_index_t    leader_commit,
     raft_index_t    rsp_first_idx
     );
@@ -453,6 +466,9 @@ typedef struct
     /** Callback for sending request vote messages */
     func_send_requestvote_f             send_requestvote;
 
+    /** Callback for sending request vote response messages */
+    func_send_requestvote_response_f    send_requestvote_response;
+
     /** Callback for sending appendentries messages */
     func_send_appendentries_f           send_appendentries;
 
@@ -480,7 +496,9 @@ typedef struct
      * For safety reasons this callback MUST flush the change to disk.
      * Return 0 on success.
      * Return RAFT_ERR_SHUTDOWN if you want the server to shutdown. */
-    func_logentry_event_f               log_offer;
+    func_logbatch_event_f               log_retain;
+
+    func_logretain_done_event_f         log_retain_done;
 
     /** Callback for adding some entries to the log
      * For safety reasons this callback MUST flush the change to disk.
@@ -619,10 +637,6 @@ raft_node_t *raft_get_current_leader_node(raft_server_t *me);
 /**
  * @return the node's next index */
 raft_index_t raft_node_get_next_idx(raft_node_t *me);
-
-/**
- * @return this node's match index */
-raft_index_t raft_node_get_match_idx(raft_node_t *me);
 
 /**
  * @return this node's user data */
@@ -821,6 +835,10 @@ raft_term_t raft_get_snapshot_last_term(raft_server_t *me_);
 
 void raft_set_snapshot_metadata(raft_server_t *me_, raft_term_t term, raft_index_t idx);
 
+int log_load_from_snapshot(raft_server_t *me, raft_index_t idx, raft_term_t term);
+
+raft_index_t raft_get_num_snapshottable_logs(raft_server_t *me_);
+
 /*********************************************************/
 /*                    Event Processing                   */
 /*********************************************************/
@@ -870,12 +888,10 @@ int raft_recv_appendentries_response(raft_server_t  *me,
 /** Receive a requestvote message.
  * @param[in] node The node who sent us this message
  * @param[in] vr The requestvote message
- * @param[out] r The resulting response
  * @return 0 on success */
 int raft_recv_requestvote(raft_server_t *me,
     raft_node_t                         *node,
-    msg_requestvote_t                   *vr,
-    msg_requestvote_response_t          *r);             // FIXME: should send r in function.
+    msg_requestvote_t                   *vr);
 
 /** Receive a response from a requestvote message we sent.
  * @param[in] node The node this response was sent by
@@ -908,8 +924,7 @@ int raft_recv_requestvote_response(raft_server_t    *me,
  * </ul>
  *
  * @param[in] node The node who sent us this message
- * @param[in] ety The entry message
- * @param[out] r The resulting response
+ * @param[in] bat The entries message
  * @return
  *  0 on success;
  *  RAFT_ERR_NOT_LEADER server is not the leader;
@@ -917,14 +932,9 @@ int raft_recv_requestvote_response(raft_server_t    *me,
  *  RAFT_ERR_ONE_VOTING_CHANGE_ONLY there is a non-voting change inflight;
  *  RAFT_ERR_NOMEM memory allocation failure
  */
-int raft_recv_entry(raft_server_t   *me,
-    msg_entry_t                     *ety,
-    msg_entry_response_t            *r);
+int raft_retain_entries(raft_server_t *me, msg_batch_t *bat);
 
-/** Check if a voting change is in progress
- * @param[in] raft The Raft server
- * @return 1 if a voting change is in progress */
-int raft_voting_change_is_in_progress(raft_server_t *me_);
+// int raft_lookup_entries()
 
 #endif /* RAFT_H_ */
 
