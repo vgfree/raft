@@ -63,7 +63,7 @@ raft_server_private_t *raft_server_new(void)
         return NULL;
     }
 
-    //me->voting_cfg_change_log_idx = -1;
+    // me->voting_cfg_change_log_idx = -1;
     raft_server_set_state(me, RAFT_STATE_FOLLOWER);
 
     me->snapshot_in_progress = 0;
@@ -97,7 +97,7 @@ void raft_server_set_callbacks(raft_server_private_t *me, raft_cbs_t *funcs, voi
  * Add entry to log.
  * Don't add entry if we've already added this entry (based off ID)
  * Don't add entries with ID=0
- * @return 0 if unsucessful; 1 otherwise */
+ * @return 0 if unsuccessful; 1 otherwise */
 int log_append_entry(raft_server_private_t *me, raft_entry_t *ety)
 {
     raft_batch_t *bat = raft_batch_make(1);
@@ -531,8 +531,7 @@ int raft_server_recv_appendentries(
          *   whose term matches prevLogTerm (§5.3) */
         if (ae->prev_log_idx == me->snapshot_last_idx) {
             /* Is a snapshot */
-            if (me->snapshot_last_term != ae->prev_log_term)
-            {
+            if (me->snapshot_last_term != ae->prev_log_term) {
                 /* Should never happen; something is seriously wrong! */
                 __log(me, node, "Snapshot AE prev conflicts with committed entry");
                 e = RAFT_ERR_SHUTDOWN;
@@ -664,7 +663,7 @@ static int __should_grant_vote(raft_server_private_t *me, msg_requestvote_t *vr)
         return 0;
     }
 
-    /* TODO: if voted for is candiate return 1 (if below checks pass) */
+    /* TODO: if voted for is candidate return 1 (if below checks pass) */
     if (raft_server_already_voted(me)) {
         return 0;
     }
@@ -678,12 +677,13 @@ static int __should_grant_vote(raft_server_private_t *me, msg_requestvote_t *vr)
         return 1;
     }
 
-    int ety_term = raft_cache_get_term_at_idx(me->log, current_idx);
+    raft_term_t ety_term = raft_cache_get_term_at_idx(me->log, current_idx);
 
     // TODO: add test
     if (!ety_term) {
         ety_term = (me->snapshot_last_idx == current_idx) ? me->snapshot_last_term : 0;
     }
+
     if (!ety_term) {
         return 0;
     }
@@ -912,6 +912,7 @@ int raft_recv_entry(raft_server_t   *me_,
     r->idx = raft_cache_get_entry_last_idx(me->log);
     r->term = me->current_term;
 
+    /* FIXME: is this required if raft_append_entry does this too? */
     if (raft_entry_is_voting_cfg_change(ety)) {
         me->voting_cfg_change_log_idx = raft_cache_get_entry_last_idx(me->log);
     }
@@ -1068,6 +1069,10 @@ raft_node_t *raft_server_add_node(raft_server_private_t *me, void *udata, raft_n
     /* sort by id */
     qsort(me->nodes, me->num_nodes, sizeof(raft_node_t *), _compare_node);
 
+    if (me->cb.notify_membership_event) {
+        me->cb.notify_membership_event((raft_server_t *)me, raft_server_get_udata(me), node, RAFT_MEMBERSHIP_ADD);
+    }
+
     return node;
 }
 
@@ -1104,6 +1109,12 @@ void raft_server_remove_node(raft_server_private_t *me, raft_node_id_t id)
     }
 
     assert(found);
+    assert(node);
+
+    if (me->cb.notify_membership_event) {
+        me->cb.notify_membership_event((raft_server_t *)me, raft_server_get_udata(me), (raft_node_t *)node, RAFT_MEMBERSHIP_REMOVE);
+    }
+
     memmove(&me->nodes[i], &me->nodes[i + 1], sizeof(*me->nodes) * (me->num_nodes - i - 1));
     me->num_nodes--;
 
@@ -1257,7 +1268,7 @@ void raft_server_effect_cfg_entry(raft_server_private_t *me, raft_entry_t *ety, 
                 if (node && !raft_node_is_active((raft_node_private_t *)node)) {
                     raft_node_set_active(node, 1);
                 } else if (!node) {
-                    raft_node_t *node = raft_server_add_non_voting_node(me, NULL, node_id, is_self);
+                    node = raft_server_add_non_voting_node(me, NULL, node_id, is_self);
                     assert(node);
                 }
             }
@@ -1493,6 +1504,8 @@ int raft_end_snapshot(raft_server_t *me_)
             }
         }
     }
+
+    assert(raft_cache_count(me->log) == 1);
 
     return 0;
 }

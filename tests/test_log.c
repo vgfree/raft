@@ -663,18 +663,19 @@ void TestLog_get_from_idx_with_base_off_by_one(CuTest *tc)
     CuAssertIntEquals(tc, bat->entrys[0].id, 2);
 }
 
-void TestLog_get_from_idx_with_base_off_by_one(CuTest * tc)
+void TestLog_get_from_idx_with_base_off_by_one(CuTest *tc)
 {
-    void* queue = llqueue_new();
-    void *r = raft_new();
-    raft_cbs_t funcs = {
-        .log_pop = __log_pop,
-        .log_get_node_id = __logentry_get_node_id
+    void        *queue = llqueue_new();
+    void        *r = raft_new();
+    raft_cbs_t  funcs = {
+        .log_pop            = __log_pop,
+        .log_get_node_id    = __logentry_get_node_id
     };
+
     raft_set_callbacks(r, &funcs, queue);
 
-    void *l;
-    raft_entry_t e1, e2;
+    void            *l;
+    raft_entry_t    e1, e2;
 
     memset(&e1, 0, sizeof(raft_entry_t));
     memset(&e2, 0, sizeof(raft_entry_t));
@@ -685,7 +686,7 @@ void TestLog_get_from_idx_with_base_off_by_one(CuTest * tc)
     l = log_alloc(1);
     log_set_callbacks(l, &funcs, r);
 
-    raft_entry_t* ety;
+    raft_entry_t *ety;
 
     /* append append */
     CuAssertIntEquals(tc, 0, log_append_entry(l, &e1));
@@ -693,7 +694,7 @@ void TestLog_get_from_idx_with_base_off_by_one(CuTest * tc)
     CuAssertIntEquals(tc, 2, raft_cache_count(l));
 
     /* poll */
-    CuAssertIntEquals(tc, log_poll(l, (void*)&ety), 0);
+    CuAssertIntEquals(tc, log_poll(l, (void *)&ety), 0);
     CuAssertIntEquals(tc, ety->id, 1);
     CuAssertIntEquals(tc, 1, raft_cache_count(l));
 
@@ -708,3 +709,4 @@ void TestLog_get_from_idx_with_base_off_by_one(CuTest * tc)
     CuAssertIntEquals(tc, n_etys, 1);
     CuAssertIntEquals(tc, ety->id, 2);
 }
+

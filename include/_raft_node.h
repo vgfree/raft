@@ -43,8 +43,14 @@ int raft_node_is_active(raft_node_private_t *me);
  * @return 1 if this is a voting node. Otherwise 0. */
 int raft_node_is_voting(raft_node_private_t *me);
 
+/** Confirm that a node's voting status is final
+ * @param[in] node The node
+ * @param[in] voting Whether this node's voting status is committed or not */
 void raft_node_set_voting_committed(raft_node_private_t *me, int committed);
 
+/** Confirm that a node's voting status is final
+ * @param[in] node The node
+ * @param[in] committed Whether this node's membership is committed or not */
 void raft_node_set_addition_committed(raft_node_private_t *me, int committed);
 
 #endif /* ifndef _RAFT_NODE_H_ */
