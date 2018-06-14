@@ -193,15 +193,15 @@ void raft_server_apply_cfg_entry(raft_server_private_t *me, raft_entry_t *ety, c
 /** Async apply all entries up to the commit index start function.
  * Apply entries from lastApplying + 1
  **/
-int raft_server_async_apply_all_start(raft_server_private_t *me);
+int raft_server_async_apply_entries_start(raft_server_private_t *me);
 
 /** Async apply all entries up to the commit index finish function.
  * @return
  *  0 on success, entries committed;
  *  RAFT_ERR_SHUTDOWN when server MUST shutdown */
-int raft_server_async_apply_all_finish(raft_server_private_t *me, bool ok, raft_batch_t *bat, raft_index_t idx);
+int raft_server_async_apply_entries_finish(raft_server_private_t *me, bool ok, raft_batch_t *bat, raft_index_t idx);
 
-raft_index_t do_append_entries_cache(raft_server_private_t *me, bool ok, raft_batch_t *bat, raft_index_t idx);
+raft_index_t raft_server_dispose_entries_cache(raft_server_private_t *me, bool ok, raft_batch_t *bat, raft_index_t idx);
 
 int raft_server_async_append_entries_start(raft_server_private_t *me, raft_node_t *node, raft_batch_t *bat, raft_index_t idx,
     raft_index_t leader_commit, raft_index_t rsp_first_idx);
@@ -229,7 +229,6 @@ int raft_server_recv_requestvote_response(raft_server_private_t *me, raft_node_t
 
 int raft_server_retain_entries(raft_server_private_t *me, msg_batch_t *bat, void *usr);
 
-raft_index_t do_retain_entries_cache(raft_server_private_t *me, bool ok, raft_batch_t *bat, raft_index_t idx);
 
 /**
  * Add entries to the server's log.

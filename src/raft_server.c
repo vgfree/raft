@@ -286,7 +286,7 @@ int raft_server_periodic(raft_server_private_t *me, int msec_since_last_period)
 
     if ((raft_server_get_last_applied_idx(me) < raft_server_get_commit_idx(me)) &&
         !raft_snapshot_is_in_progress((raft_server_t *)me)) {
-        int e = raft_server_async_apply_all_start(me);
+        int e = raft_server_async_apply_entries_start(me);
 
         if (0 != e) {
             return e;
@@ -804,29 +804,6 @@ int raft_server_recv_requestvote_response(raft_server_private_t *me, raft_node_t
     return 0;
 }
 
-raft_index_t do_retain_entries_cache(raft_server_private_t *me, bool ok, raft_batch_t *bat, raft_index_t idx)
-{
-    if (ok) {
-        for (int i = 0; i < bat->n_entries; i++) {
-            raft_entry_t *ety = raft_batch_view_entry(bat, i);
-            raft_server_effect_cfg_entry(me, ety, idx + i);
-        }
-
-        int e = raft_cache_push_batch_entries(me->log, bat);
-        assert(0 == e);
-
-        raft_batch_free(bat);
-    } else {
-        for (int i = 0; i < bat->n_entries; i++) {
-            raft_entry_t *ety = raft_batch_take_entry(bat, i);
-            raft_entry_free(ety);
-        }
-
-        raft_batch_free(bat);
-    }
-
-    return raft_cache_get_entry_last_idx(me->log);
-}
 
 int raft_server_async_retain_entries_start(raft_server_private_t *me, raft_batch_t *bat, raft_index_t idx, void *usr)
 {
@@ -857,7 +834,7 @@ int raft_server_async_retain_entries_start(raft_server_private_t *me, raft_batch
     } else {
         assert(0);
         int n_entries = bat->n_entries;
-        do_retain_entries_cache(me, true, bat, idx);
+        raft_server_dispose_entries_cache(me, true, bat, idx);
 
         raft_server_async_retain_entries_finish(me, 0, n_entries, usr);
     }
@@ -1216,7 +1193,7 @@ int raft_msg_entry_response_committed(raft_server_t *me_,
 
 #endif /* if 0 */
 
-int raft_server_async_apply_all_start(raft_server_private_t *me)
+int raft_server_async_apply_entries_start(raft_server_private_t *me)
 {
     if (raft_snapshot_is_in_progress((raft_server_t *)me)) {
         return 0;
@@ -1249,7 +1226,7 @@ int raft_server_async_apply_all_start(raft_server_private_t *me)
         int e = me->cb.log_apply((raft_server_t *)me, me->udata, bat, from_idx);
 
         if (RAFT_ERR_SHUTDOWN == e) {
-            raft_server_async_apply_all_finish(me, false, bat, from_idx);
+            raft_server_async_apply_entries_finish(me, false, bat, from_idx);
             return RAFT_ERR_SHUTDOWN;
         }
     }
@@ -1257,7 +1234,7 @@ int raft_server_async_apply_all_start(raft_server_private_t *me)
     return 0;
 }
 
-int raft_server_async_apply_all_finish(raft_server_private_t *me, bool ok, raft_batch_t *bat, raft_index_t idx)
+int raft_server_async_apply_entries_finish(raft_server_private_t *me, bool ok, raft_batch_t *bat, raft_index_t idx)
 {
     raft_index_t    from_idx = idx;
     raft_index_t    over_idx = idx + bat->n_entries - 1;
@@ -1492,7 +1469,7 @@ int raft_begin_snapshot(raft_server_t *me_)
     }
 
     /* we need to get all the way to the commit idx */
-    int e = raft_server_async_apply_all_start(me);// FIXME: this is become async.
+    int e = raft_server_async_apply_entries_start(me);// FIXME: this is become async.
 
     if (e != 0) {
         return e;
@@ -1660,7 +1637,7 @@ int log_load_from_snapshot(raft_server_t *me, raft_index_t idx, raft_term_t term
     return 0;
 }
 
-raft_index_t do_append_entries_cache(raft_server_private_t *me, bool ok, raft_batch_t *bat, raft_index_t idx)
+raft_index_t raft_server_dispose_entries_cache(raft_server_private_t *me, bool ok, raft_batch_t *bat, raft_index_t idx)
 {
     if (ok) {
         for (int i = 0; i < bat->n_entries; i++) {
@@ -1713,7 +1690,7 @@ int raft_server_async_append_entries_start(raft_server_private_t *me, raft_node_
         }
     } else {
         assert(0);
-        do_append_entries_cache(me, true, bat, idx);
+        raft_server_dispose_entries_cache(me, true, bat, idx);
 
         raft_server_async_append_entries_finish(me, node, true, leader_commit, 1, raft_cache_get_entry_last_idx(me->log), rsp_first_idx);
     }

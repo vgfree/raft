@@ -436,7 +436,7 @@ void TestRaft_server_wont_apply_entry_if_we_dont_have_entry_to_apply(CuTest *tc)
     raft_set_commit_idx(r, 0);
     raft_server_set_last_applied_idx(r, 0);
 
-    raft_server_async_apply_all_start(r);
+    raft_server_async_apply_entries_start(r);
     CuAssertTrue(tc, 0 == raft_server_get_last_applied_idx(r));
     CuAssertTrue(tc, 0 == raft_get_commit_idx(r));
 }
@@ -452,7 +452,7 @@ void TestRaft_server_wont_apply_entry_if_there_isnt_a_majority(CuTest *tc)
     raft_set_commit_idx(r, 0);
     raft_server_set_last_applied_idx(r, 0);
 
-    raft_server_async_apply_all_start(r);
+    raft_server_async_apply_entries_start(r);
     CuAssertTrue(tc, 0 == raft_server_get_last_applied_idx(r));
     CuAssertTrue(tc, 0 == raft_get_commit_idx(r));
 
@@ -463,7 +463,7 @@ void TestRaft_server_wont_apply_entry_if_there_isnt_a_majority(CuTest *tc)
     ety.data.buf = str;
     ety.data.len = 3;
     raft_server_async_retain_entries_start(r, &ety);
-    raft_server_async_apply_all_start(r);
+    raft_server_async_apply_entries_start(r);
     /* Not allowed to be applied because we haven't confirmed a majority yet */
     CuAssertTrue(tc, 0 == raft_server_get_last_applied_idx(r));
     CuAssertTrue(tc, 0 == raft_get_commit_idx(r));
@@ -553,7 +553,7 @@ void TestRaft_server_apply_entry_increments_last_applied_idx(CuTest *tc)
     ety.data.len = 3;
     raft_server_async_retain_entries_start(r, &ety);
     raft_set_commit_idx(r, 1);
-    raft_server_async_apply_all_start(r);
+    raft_server_async_apply_entries_start(r);
     CuAssertTrue(tc, 1 == raft_server_get_last_applied_idx(r));
 }
 
@@ -2675,7 +2675,7 @@ void TestRaft_leader_responds_to_entry_msg_when_entry_is_committed(CuTest *tc)
     CuAssertTrue(tc, 1 == raft_cache_count(((raft_server_private_t *)r)->log));
 
     /* trigger response through commit */
-    raft_server_async_apply_all_start(r);
+    raft_server_async_apply_entries_start(r);
 }
 
 void TestRaft_non_leader_recv_entry_msg_fails(CuTest *tc)
@@ -4138,7 +4138,7 @@ void T_estRaft_leader_recv_appendentries_response_set_has_sufficient_logs_after_
     aer.current_idx = 3;
     raft_recv_appendentries_response(r, raft_get_node(r, 2), &aer);
     raft_recv_appendentries_response(r, raft_get_node(r, 3), &aer);
-    raft_server_async_apply_all_start(r);
+    raft_server_async_apply_entries_start(r);
 
     /* voting change is committed, so next time we hear from node 2
      * it should be considered as having all logs and can be promoted

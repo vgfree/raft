@@ -150,7 +150,7 @@ void TestRaft_leader_will_not_apply_entry_if_snapshot_is_in_progress(CuTest *tc)
     CuAssertIntEquals(tc, 0, raft_begin_snapshot(r));
     CuAssertIntEquals(tc, 1, raft_server_get_last_applied_idx(r));
     raft_set_commit_idx(r, 2);
-    CuAssertIntEquals(tc, -1, raft_server_async_apply_all_start(r));
+    CuAssertIntEquals(tc, -1, raft_server_async_apply_entries_start(r));
     CuAssertIntEquals(tc, 1, raft_server_get_last_applied_idx(r));
 }
 
@@ -332,7 +332,7 @@ void TestRaft_joinee_needs_to_get_snapshot(CuTest *tc)
 
     CuAssertIntEquals(tc, 0, raft_begin_snapshot(r));
     CuAssertIntEquals(tc, 1, raft_server_get_last_applied_idx(r));
-    CuAssertIntEquals(tc, -1, raft_server_async_apply_all_start(r));
+    CuAssertIntEquals(tc, -1, raft_server_async_apply_entries_start(r));
     CuAssertIntEquals(tc, 1, raft_server_get_last_applied_idx(r));
 }
 
