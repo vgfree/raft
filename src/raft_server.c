@@ -804,7 +804,7 @@ int raft_server_recv_requestvote_response(raft_server_private_t *me, raft_node_t
     return 0;
 }
 
-void do_retain_entries_cache(raft_server_private_t *me, bool ok, raft_batch_t *bat, raft_index_t idx)
+raft_index_t do_retain_entries_cache(raft_server_private_t *me, bool ok, raft_batch_t *bat, raft_index_t idx)
 {
     if (ok) {
         for (int i = 0; i < bat->n_entries; i++) {
@@ -824,9 +824,11 @@ void do_retain_entries_cache(raft_server_private_t *me, bool ok, raft_batch_t *b
 
         raft_batch_free(bat);
     }
+
+    return raft_cache_get_entry_last_idx(me->log);
 }
 
-int raft_server_async_retain_entries_start(raft_server_private_t *me, raft_batch_t *bat, raft_index_t idx)
+int raft_server_async_retain_entries_start(raft_server_private_t *me, raft_batch_t *bat, raft_index_t idx, void *usr)
 {
     if (bat->n_entries == 1) {
         raft_entry_t *ety = raft_batch_view_entry(bat, 0);
@@ -847,7 +849,7 @@ int raft_server_async_retain_entries_start(raft_server_private_t *me, raft_batch
     assert(start_idx == idx);
 
     if (me->cb.log_retain) {
-        int e = me->cb.log_retain((raft_server_t *)me, ud, bat, start_idx);
+        int e = me->cb.log_retain((raft_server_t *)me, ud, bat, start_idx, usr);
 
         if (0 != e) {
             return e;
@@ -857,13 +859,13 @@ int raft_server_async_retain_entries_start(raft_server_private_t *me, raft_batch
         int n_entries = bat->n_entries;
         do_retain_entries_cache(me, true, bat, idx);
 
-        raft_server_async_retain_entries_finish(me, 0, n_entries);
+        raft_server_async_retain_entries_finish(me, 0, n_entries, usr);
     }
 
     return 0;
 }
 
-int raft_server_async_retain_entries_finish(raft_server_private_t *me, int result, int n_entries)
+int raft_server_async_retain_entries_finish(raft_server_private_t *me, int result, int n_entries, void *usr)
 {
     me->retain_evts--;
     assert(me->cb.log_retain_done);
@@ -907,10 +909,10 @@ int raft_server_async_retain_entries_finish(raft_server_private_t *me, int resul
     }
 
     return me->cb.log_retain_done((raft_server_t *)me, me->udata, result, me->current_term,
-               raft_cache_get_entry_last_idx(me->log) - n_entries + 1, raft_cache_get_entry_last_idx(me->log));// FIXME:
+               raft_cache_get_entry_last_idx(me->log) - n_entries + 1, raft_cache_get_entry_last_idx(me->log), usr);// FIXME:
 }
 
-int raft_server_retain_entries(raft_server_private_t *me, msg_batch_t *bat)
+int raft_server_retain_entries(raft_server_private_t *me, msg_batch_t *bat, void *usr)
 {
     int result = 0;
     int retain_evts = me->retain_evts;
@@ -959,12 +961,12 @@ int raft_server_retain_entries(raft_server_private_t *me, msg_batch_t *bat)
             me->current_term, ety->id, raft_cache_get_entry_last_idx(me->log) + 1);
     }
 
-    int e = raft_server_async_retain_entries_start(me, bat, raft_cache_get_entry_last_idx(me->log) + 1);
+    int e = raft_server_async_retain_entries_start(me, bat, raft_cache_get_entry_last_idx(me->log) + 1, usr);
     assert(0 == e);
     return 0;
 
 out:
-    raft_server_async_retain_entries_finish(me, result, 0);
+    raft_server_async_retain_entries_finish(me, result, 0, usr);
     return 0;
 }
 
@@ -1042,6 +1044,7 @@ int raft_server_send_appendentries(raft_server_private_t *me, raft_node_t *node)
     ae.term = me->current_term;
     ae.leader_commit = raft_server_get_commit_idx(me);
     ae.bat = raft_server_get_series_same_type_entries_from_idx(me, next_idx);
+    ae.n_entries = ae.bat ? ae.bat->n_entries : 0;
 
     /* previous log is the log just before the new logs */
     ae.prev_log_idx = 0;
@@ -1242,8 +1245,8 @@ int raft_server_async_apply_all_start(raft_server_private_t *me)
 
     raft_server_set_last_applying_idx(me, over_idx);
 
-    if (me->cb.applylog) {
-        int e = me->cb.applylog((raft_server_t *)me, me->udata, bat, from_idx);
+    if (me->cb.log_apply) {
+        int e = me->cb.log_apply((raft_server_t *)me, me->udata, bat, from_idx);
 
         if (RAFT_ERR_SHUTDOWN == e) {
             raft_server_async_apply_all_finish(me, false, bat, from_idx);
@@ -1657,7 +1660,7 @@ int log_load_from_snapshot(raft_server_t *me, raft_index_t idx, raft_term_t term
     return 0;
 }
 
-void do_append_entries_cache(raft_server_private_t *me, bool ok, raft_batch_t *bat, raft_index_t idx)
+raft_index_t do_append_entries_cache(raft_server_private_t *me, bool ok, raft_batch_t *bat, raft_index_t idx)
 {
     if (ok) {
         for (int i = 0; i < bat->n_entries; i++) {
@@ -1677,6 +1680,8 @@ void do_append_entries_cache(raft_server_private_t *me, bool ok, raft_batch_t *b
 
         raft_batch_free(bat);
     }
+
+    return raft_cache_get_entry_last_idx(me->log);
 }
 
 int raft_server_async_append_entries_start(raft_server_private_t *me, raft_node_t *node, raft_batch_t *bat, raft_index_t idx,
@@ -1700,8 +1705,8 @@ int raft_server_async_append_entries_start(raft_server_private_t *me, raft_node_
     raft_index_t start_idx = raft_cache_get_entry_last_idx(me->log) + 1;
     assert(start_idx == idx);
 
-    if (me->cb.log_offer_batch) {
-        int e = me->cb.log_offer_batch((raft_server_t *)me, ud, bat, start_idx, leader_commit, rsp_first_idx);
+    if (me->cb.log_append) {
+        int e = me->cb.log_append((raft_server_t *)me, ud, bat, start_idx, node, leader_commit, rsp_first_idx);
 
         if (0 != e) {
             return e;

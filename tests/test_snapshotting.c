@@ -29,7 +29,7 @@ static int __raft_persist_vote(
     return 0;
 }
 
-static int __raft_applylog(
+static int __raft_log_apply(
     raft_server_t   *raft,
     void            *udata,
     raft_entry_t    *ety,

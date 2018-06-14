@@ -170,7 +170,7 @@ def raft_send_snapshot(raft, udata, node):
     return ffi.from_handle(udata).send_snapshot(node)
 
 
-def raft_applylog(raft, udata, ety, idx):
+def raft_log_apply(raft, udata, ety, idx):
     try:
         return ffi.from_handle(udata).entry_apply(ety, idx)
     except:
@@ -615,7 +615,7 @@ class RaftServer(object):
         cbs.send_requestvote = self.raft_send_requestvote
         cbs.send_appendentries = self.raft_send_appendentries
         cbs.send_snapshot = self.raft_send_snapshot
-        cbs.applylog = self.raft_applylog
+        cbs.log_apply = self.raft_log_apply
         cbs.persist_vote = self.raft_persist_vote
         cbs.persist_term = self.raft_persist_term
         cbs.log_offer = self.raft_logentry_offer
@@ -706,7 +706,7 @@ class RaftServer(object):
         self.raft_send_requestvote = ffi.callback("int(raft_server_t*, void*, raft_node_t*, msg_requestvote_t*)", raft_send_requestvote)
         self.raft_send_appendentries = ffi.callback("int(raft_server_t*, void*, raft_node_t*, msg_appendentries_t*)", raft_send_appendentries)
         self.raft_send_snapshot = ffi.callback("int(raft_server_t*, void* , raft_node_t*)", raft_send_snapshot)
-        self.raft_applylog = ffi.callback("int(raft_server_t*, void*, raft_entry_t*, int)", raft_applylog)
+        self.raft_log_apply = ffi.callback("int(raft_server_t*, void*, raft_entry_t*, int)", raft_log_apply)
         self.raft_persist_vote = ffi.callback("int(raft_server_t*, void*, int)", raft_persist_vote)
         self.raft_persist_term = ffi.callback("int(raft_server_t*, void*, int, int)", raft_persist_term)
         self.raft_logentry_offer = ffi.callback("int(raft_server_t*, void*, raft_entry_t*, int)", raft_logentry_offer)

@@ -100,7 +100,7 @@ int raft_server_set_voted_for(raft_server_private_t *me, const raft_node_id_t id
 int raft_server_set_current_term(raft_server_private_t *me, const raft_term_t term)
 {
     if (me->current_term < term) {
-        int voted_for = -1;// TODO: remove voted_for
+        raft_node_id_t voted_for = -1;// TODO: remove voted_for
 
         if (me->cb.persist_term) {
             int e = me->cb.persist_term((raft_server_t *)me, me->udata, term, voted_for);

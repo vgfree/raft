@@ -211,6 +211,7 @@ typedef struct
      * cluster. Entries up to this index will be applied to the FSM */
     raft_index_t    leader_commit;
 
+    int             n_entries;
     /** this message */
     msg_batch_t     *bat;
 } msg_appendentries_t;
@@ -412,7 +413,7 @@ typedef int (
     );
 
 typedef int (
-*func_logbatch_event_f
+*func_log_apply_f
 )   (
     raft_server_t   *raft,
     void            *user_data,
@@ -421,23 +422,35 @@ typedef int (
     );
 
 typedef int (
-*func_logretain_done_event_f
+*func_log_retain_f
+)   (
+    raft_server_t   *raft,
+    void            *user_data,
+    raft_batch_t    *batch,
+    raft_index_t    start_idx,
+    void            *usr
+    );
+
+typedef int (
+*func_log_retain_done_f
 )   (
     raft_server_t   *raft,
     void            *user_data,
     int             result,
     raft_term_t     term,
     raft_index_t    start_idx,
-    raft_index_t    end_idx
+    raft_index_t    end_idx,
+    void            *usr
     );
 
 typedef int (
-*func_log_offer_event_f
+*func_log_append_f
 )   (
     raft_server_t   *raft,
     void            *user_data,
     raft_batch_t    *batch,
     raft_index_t    start_idx,
+    raft_node_t     *node,
     raft_index_t    leader_commit,
     raft_index_t    rsp_first_idx
     );
@@ -481,7 +494,7 @@ typedef struct
     /** Callback for finite state machine application
      * Return 0 on success.
      * Return RAFT_ERR_SHUTDOWN if you want the server to shutdown. */
-    func_logbatch_event_f               applylog;
+    func_log_apply_f                    log_apply;
 
     /** Callback for persisting vote data
      * For safety reasons this callback MUST flush the change to disk. */
@@ -492,29 +505,29 @@ typedef struct
      * disk atomically. */
     func_persist_term_f                 persist_term;
 
-    /** Callback for adding an entry to the log
+    /** Callback for adding some entries to the leader log
      * For safety reasons this callback MUST flush the change to disk.
      * Return 0 on success.
      * Return RAFT_ERR_SHUTDOWN if you want the server to shutdown. */
-    func_logbatch_event_f               log_retain;
+    func_log_retain_f                   log_retain;
 
-    func_logretain_done_event_f         log_retain_done;
+    func_log_retain_done_f              log_retain_done;
 
-    /** Callback for adding some entries to the log
+    /** Callback for adding some entries to the follower log
      * For safety reasons this callback MUST flush the change to disk.
      * Return 0 on success.
      * Return RAFT_ERR_SHUTDOWN if you want the server to shutdown. */
-    func_log_offer_event_f              log_offer_batch;
+    func_log_append_f                   log_append;
 
     /** Callback for removing the oldest entry from the log
      * For safety reasons this callback MUST flush the change to disk.
-     * @note If memory was malloc'd in log_offer then this should be the right
+     * @note If memory was malloc'd in log_append then this should be the right
      *  time to free the memory. */
     func_logentry_event_f               log_poll;
 
     /** Callback for removing the youngest entry from the log
      * For safety reasons this callback MUST flush the change to disk.
-     * @note If memory was malloc'd in log_offer then this should be the right
+     * @note If memory was malloc'd in log_append then this should be the right
      *  time to free the memory. */
     func_logentry_event_f               log_pop;
 
@@ -857,12 +870,12 @@ int raft_periodic(raft_server_t *me, int msec_elapsed);
  *
  * Might call malloc once to increase the log entry array size.
  *
- * The log_offer callback will be called.
+ * The log_append callback will be called.
  *
  * @note The memory pointer (ie. raft_entry_data_t) for each msg_entry_t is
  *   copied directly. If the memory is temporary you MUST either make the
  *   memory permanent (ie. via malloc) OR re-assign the memory within the
- *   log_offer callback.
+ *   log_append callback.
  *
  * @param[in] node The node who sent us this message
  * @param[in] ae The appendentries message
@@ -911,12 +924,12 @@ int raft_recv_requestvote_response(raft_server_t    *me,
  *
  * Might call malloc once to increase the log entry array size.
  *
- * The log_offer callback will be called.
+ * The log_retain callback will be called.
  *
  * @note The memory pointer (ie. raft_entry_data_t) in msg_entry_t is
  *  copied directly. If the memory is temporary you MUST either make the
  *  memory permanent (ie. via malloc) OR re-assign the memory within the
- *  log_offer callback.
+ *  log_retain callback.
  *
  * Will fail:
  * <ul>
@@ -925,6 +938,7 @@ int raft_recv_requestvote_response(raft_server_t    *me,
  *
  * @param[in] node The node who sent us this message
  * @param[in] bat The entries message
+ * @param[in] usr The user data
  * @return
  *  0 on success;
  *  RAFT_ERR_NOT_LEADER server is not the leader;
@@ -932,7 +946,7 @@ int raft_recv_requestvote_response(raft_server_t    *me,
  *  RAFT_ERR_ONE_VOTING_CHANGE_ONLY there is a non-voting change inflight;
  *  RAFT_ERR_NOMEM memory allocation failure
  */
-int raft_retain_entries(raft_server_t *me, msg_batch_t *bat);
+int raft_retain_entries(raft_server_t *me, msg_batch_t *bat, void *usr);
 
 // int raft_lookup_entries()
 

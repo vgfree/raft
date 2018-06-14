@@ -201,7 +201,7 @@ int raft_server_async_apply_all_start(raft_server_private_t *me);
  *  RAFT_ERR_SHUTDOWN when server MUST shutdown */
 int raft_server_async_apply_all_finish(raft_server_private_t *me, bool ok, raft_batch_t *bat, raft_index_t idx);
 
-void do_append_entries_cache(raft_server_private_t *me, bool ok, raft_batch_t *bat, raft_index_t idx);
+raft_index_t do_append_entries_cache(raft_server_private_t *me, bool ok, raft_batch_t *bat, raft_index_t idx);
 
 int raft_server_async_append_entries_start(raft_server_private_t *me, raft_node_t *node, raft_batch_t *bat, raft_index_t idx,
     raft_index_t leader_commit, raft_index_t rsp_first_idx);
@@ -227,9 +227,9 @@ int raft_server_send_requestvote_response(raft_server_private_t *me, raft_node_t
 
 int raft_server_recv_requestvote_response(raft_server_private_t *me, raft_node_t *node, msg_requestvote_response_t *r);
 
-int raft_server_retain_entries(raft_server_private_t *me, msg_batch_t *bat);
+int raft_server_retain_entries(raft_server_private_t *me, msg_batch_t *bat, void *usr);
 
-void do_retain_entries_cache(raft_server_private_t *me, bool ok, raft_batch_t *bat, raft_index_t idx);
+raft_index_t do_retain_entries_cache(raft_server_private_t *me, bool ok, raft_batch_t *bat, raft_index_t idx);
 
 /**
  * Add entries to the server's log.
@@ -241,9 +241,9 @@ void do_retain_entries_cache(raft_server_private_t *me, bool ok, raft_batch_t *b
  *  0 on success;
  *  RAFT_ERR_SHUTDOWN server should shutdown
  *  RAFT_ERR_NOMEM memory allocation failure */
-int raft_server_async_retain_entries_start(raft_server_private_t *me, raft_batch_t *bat, raft_index_t idx);
+int raft_server_async_retain_entries_start(raft_server_private_t *me, raft_batch_t *bat, raft_index_t idx, void *usr);
 
-int raft_server_async_retain_entries_finish(raft_server_private_t *me, int result, int n_entries);
+int raft_server_async_retain_entries_finish(raft_server_private_t *me, int result, int n_entries, void *usr);
 
 #endif /* ifndef _RAFT_SERVER_H_ */
 

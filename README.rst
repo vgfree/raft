@@ -249,7 +249,7 @@ Function callbacks
 
 You provide your callbacks to the Raft server using ``raft_set_callbacks``.
 
-The following callbacks MUST be implemented: ``send_requestvote``, ``send_appendentries``, ``applylog``, ``persist_vote``, ``persist_term``, ``log_offer``, and ``log_pop``.
+The following callbacks MUST be implemented: ``send_requestvote``, ``send_appendentries``, ``log_apply``, ``persist_vote``, ``persist_term``, ``log_offer``, and ``log_pop``.
 
 *Example of function callbacks being set:*
 
@@ -258,7 +258,7 @@ The following callbacks MUST be implemented: ``send_requestvote``, ``send_append
     raft_cbs_t raft_callbacks = {
         .send_requestvote            = __send_requestvote,
         .send_appendentries          = __send_appendentries,
-        .applylog                    = __applylog,
+        .log_apply                    = __log_apply,
         .persist_vote                = __persist_vote,
         .persist_term                = __persist_term,
         .log_offer                   = __raft_logentry_offer,
@@ -372,7 +372,7 @@ For this callback we have to serialize a ``msg_appendentries_t`` struct, and the
     }
 
 
-**applylog()**
+**log_apply()**
 
 This callback is all what is needed to interface the FSM with the Raft library. Depending on your application, you might want to save the commit_idx to disk inside this callback.
 
@@ -457,7 +457,7 @@ It's highly recommended that when a node is added to the cluster that its node I
 
 2. Inside the ``log_offer`` callback, when a log with type ``RAFT_LOGTYPE_REMOVE_NODE`` is detected, we remove the node by calling ``raft_remove_node``
 
-3. Once the ``RAFT_LOGTYPE_REMOVE_NODE`` configuration change log is applied in the ``applylog`` callback we shutdown the server if it is to be removed.
+3. Once the ``RAFT_LOGTYPE_REMOVE_NODE`` configuration change log is applied in the ``log_apply`` callback we shutdown the server if it is to be removed.
 
 Log Compaction
 --------------

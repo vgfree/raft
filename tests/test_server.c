@@ -31,7 +31,7 @@ static int __raft_persist_vote(
     return 0;
 }
 
-int __raft_applylog(
+int __raft_log_apply(
     raft_server_t   *raft,
     void            *udata,
     raft_entry_t    *ety,
@@ -41,7 +41,7 @@ int __raft_applylog(
     return 0;
 }
 
-int __raft_applylog_shutdown(
+int __raft_log_apply_shutdown(
     raft_server_t   *raft,
     void            *udata,
     raft_entry_t    *ety,
@@ -476,7 +476,7 @@ void TestRaft_server_increment_lastApplied_when_lastApplied_lt_commitidx(
 {
     raft_cbs_t funcs = {
         .persist_term   = __raft_persist_term,
-        .applylog       = __raft_applylog,
+        .log_apply      = __raft_log_apply,
     };
 
     void *r = raft_new();
@@ -503,12 +503,12 @@ void TestRaft_server_increment_lastApplied_when_lastApplied_lt_commitidx(
     CuAssertIntEquals(tc, 1, raft_server_get_last_applied_idx(r));
 }
 
-void TestRaft_user_applylog_error_propogates_to_periodic(
+void TestRaft_user_log_apply_error_propogates_to_periodic(
     CuTest *tc)
 {
     raft_cbs_t funcs = {
         .persist_term   = __raft_persist_term,
-        .applylog       = __raft_applylog_shutdown,
+        .log_apply      = __raft_log_apply_shutdown,
     };
 
     void *r = raft_new();
@@ -538,7 +538,7 @@ void TestRaft_user_applylog_error_propogates_to_periodic(
 void TestRaft_server_apply_entry_increments_last_applied_idx(CuTest *tc)
 {
     raft_cbs_t funcs = {
-        .applylog   = __raft_applylog,
+        .log_apply  = __raft_log_apply,
     };
 
     void *r = raft_new();
@@ -2957,7 +2957,7 @@ void TestRaft_leader_recv_appendentries_response_increase_commit_idx_when_majori
     CuTest *tc)
 {
     raft_cbs_t                      funcs = {
-        .applylog           = __raft_applylog,
+        .log_apply          = __raft_log_apply,
         .persist_term       = __raft_persist_term,
         .send_appendentries = sender_appendentries,
         .log                = NULL
@@ -3038,7 +3038,7 @@ void TestRaft_leader_recv_appendentries_response_set_has_sufficient_logs_for_nod
     CuTest *tc)
 {
     raft_cbs_t                      funcs = {
-        .applylog                   = __raft_applylog,
+        .log_apply                  = __raft_log_apply,
         .persist_term               = __raft_persist_term,
         .node_has_sufficient_logs   = __raft_node_has_sufficient_logs,
         .log                        = NULL
@@ -3095,7 +3095,7 @@ void TestRaft_leader_recv_appendentries_response_increase_commit_idx_using_votin
     CuTest *tc)
 {
     raft_cbs_t                      funcs = {
-        .applylog           = __raft_applylog,
+        .log_apply          = __raft_log_apply,
         .persist_term       = __raft_persist_term,
         .send_appendentries = sender_appendentries,
         .log                = NULL
@@ -3214,7 +3214,7 @@ void TestRaft_leader_recv_appendentries_response_do_not_increase_commit_idx_beca
     CuTest *tc)
 {
     raft_cbs_t                      funcs = {
-        .applylog           = __raft_applylog,
+        .log_apply          = __raft_log_apply,
         .persist_term       = __raft_persist_term,
         .send_appendentries = sender_appendentries,
         .log                = NULL
@@ -4085,7 +4085,7 @@ void T_estRaft_leader_recv_appendentries_response_set_has_sufficient_logs_after_
     CuTest *tc)
 {
     raft_cbs_t funcs = {
-        .applylog                   = __raft_applylog,
+        .log_apply                  = __raft_log_apply,
         .persist_term               = __raft_persist_term,
         .node_has_sufficient_logs   = __raft_node_has_sufficient_logs,
         .log_get_node_id            = __raft_log_get_node_id,

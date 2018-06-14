@@ -295,8 +295,8 @@ int raft_recv_requestvote_response(raft_server_t *me, raft_node_t *node, msg_req
     return raft_server_recv_requestvote_response((raft_server_private_t *)me, node, r);
 }
 
-int raft_retain_entries(raft_server_t *me, msg_batch_t *bat)
+int raft_retain_entries(raft_server_t *me, msg_batch_t *bat, void *usr)
 {
-    return raft_server_retain_entries((raft_server_private_t *)me, bat);
+    return raft_server_retain_entries((raft_server_private_t *)me, bat, usr);
 }
 
