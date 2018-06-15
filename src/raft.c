@@ -302,22 +302,23 @@ int raft_retain_entries(raft_server_t *me, msg_batch_t *bat, void *usr)
 
 int raft_async_apply_entries_finish(raft_server_t *me, bool ok, raft_batch_t *bat, raft_index_t idx)
 {
-	return raft_server_async_apply_entries_finish((raft_server_private_t *)me, ok, bat, idx);
+    return raft_server_async_apply_entries_finish((raft_server_private_t *)me, ok, bat, idx);
 }
 
 int raft_async_append_entries_finish(raft_server_t *me, raft_node_t *node, bool can_update_commit, raft_index_t leader_commit,
     int rsp_success, raft_index_t rsp_current_idx, raft_index_t rsp_first_idx)
 {
-	return raft_server_async_append_entries_finish((raft_server_private_t *)me, node, can_update_commit, leader_commit,
-    rsp_success, rsp_current_idx, rsp_first_idx);
+    return raft_server_async_append_entries_finish((raft_server_private_t *)me, node, can_update_commit, leader_commit,
+               rsp_success, rsp_current_idx, rsp_first_idx);
 }
 
 int raft_async_retain_entries_finish(raft_server_t *me, int result, int n_entries, void *usr)
 {
-	return raft_server_async_retain_entries_finish((raft_server_private_t *)me, result, n_entries, usr);
+    return raft_server_async_retain_entries_finish((raft_server_private_t *)me, result, n_entries, usr);
 }
 
 raft_index_t raft_dispose_entries_cache(raft_server_t *me, bool ok, raft_batch_t *bat, raft_index_t idx)
 {
-return raft_server_dispose_entries_cache((raft_server_private_t *)me, ok, bat, idx);
+    return raft_server_dispose_entries_cache((raft_server_private_t *)me, ok, bat, idx);
 }
+

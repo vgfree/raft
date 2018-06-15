@@ -229,7 +229,6 @@ int raft_server_recv_requestvote_response(raft_server_private_t *me, raft_node_t
 
 int raft_server_retain_entries(raft_server_private_t *me, msg_batch_t *bat, void *usr);
 
-
 /**
  * Add entries to the server's log.
  * This should be used to reload persistent state, ie. the commit log.

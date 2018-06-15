@@ -804,7 +804,6 @@ int raft_server_recv_requestvote_response(raft_server_private_t *me, raft_node_t
     return 0;
 }
 
-
 int raft_server_async_retain_entries_start(raft_server_private_t *me, raft_batch_t *bat, raft_index_t idx, void *usr)
 {
     if (bat->n_entries == 1) {
