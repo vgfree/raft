@@ -300,6 +300,11 @@ int raft_retain_entries(raft_server_t *me, msg_batch_t *bat, void *usr)
     return raft_server_retain_entries((raft_server_private_t *)me, bat, usr);
 }
 
+int raft_remind_entries(raft_server_t *me, void *usr)
+{
+    return raft_server_remind_entries((raft_server_private_t *)me, usr);
+}
+
 int raft_async_apply_entries_finish(raft_server_t *me, bool ok, raft_batch_t *bat, raft_index_t idx)
 {
     return raft_server_async_apply_entries_finish((raft_server_private_t *)me, ok, bat, idx);

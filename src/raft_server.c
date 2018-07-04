@@ -946,6 +946,42 @@ out:
     return 0;
 }
 
+int raft_server_remind_entries(raft_server_private_t *me, void *usr)
+{
+    /* Multi-threading: need to fail here because user might be
+     * snapshotting membership settings. */
+    if (raft_snapshot_is_in_progress((raft_server_t *)me)) {
+        return RAFT_ERR_SNAPSHOT_IN_PROGRESS;
+    }
+
+    if (!raft_server_is_leader(me)) {
+        return RAFT_ERR_NOT_LEADER;
+    }
+
+    raft_index_t    applied_idx = raft_server_get_last_applied_idx(me);
+    raft_index_t    commit_idx = raft_server_get_commit_idx(me);
+    assert(applied_idx <= commit_idx);
+
+    raft_index_t    from_idx = applied_idx + 1;
+    raft_index_t    over_idx = commit_idx;
+
+    raft_batch_t *bat = raft_cache_dup_among_idx(me->log, from_idx, over_idx,
+            NULL,
+            NULL,
+            NULL);
+
+    void *ud = raft_server_get_udata(me);
+
+    if (me->cb.log_remind) {
+        int e = me->cb.log_remind((raft_server_t *)me, ud, bat, from_idx, usr);
+        assert(0 == e);
+    } else {
+        assert(0);
+    }
+
+    return 0;
+}
+
 int raft_server_send_requestvote(raft_server_private_t *me, raft_node_t *node)
 {
     assert(node);

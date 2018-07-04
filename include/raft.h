@@ -444,6 +444,16 @@ typedef int (
     );
 
 typedef int (
+*func_log_remind_f
+)   (
+    raft_server_t   *raft,
+    void            *user_data,
+    raft_batch_t    *batch,
+    raft_index_t    start_idx,
+    void            *usr
+    );
+
+typedef int (
 *func_log_append_f
 )   (
     raft_server_t   *raft,
@@ -512,6 +522,8 @@ typedef struct
     func_log_retain_f                   log_retain;
 
     func_log_retain_done_f              log_retain_done;
+
+    func_log_remind_f                   log_remind;
 
     /** Callback for adding some entries to the follower log
      * For safety reasons this callback MUST flush the change to disk.
@@ -947,6 +959,8 @@ int raft_recv_requestvote_response(raft_server_t    *me,
  *  RAFT_ERR_NOMEM memory allocation failure
  */
 int raft_retain_entries(raft_server_t *me, msg_batch_t *bat, void *usr);
+
+int raft_remind_entries(raft_server_t *me, void *usr);
 
 // int raft_lookup_entries()
 int raft_async_apply_entries_finish(raft_server_t *me, bool ok, raft_batch_t *bat, raft_index_t idx);
