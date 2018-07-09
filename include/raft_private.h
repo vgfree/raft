@@ -12,6 +12,7 @@
 
 #include "raft_types.h"
 
+#include "_raft_logger.h"
 #include "_raft_cache.h"
 #include "_raft_node.h"
 #include "_raft_server.h"

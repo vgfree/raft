@@ -333,25 +333,6 @@ typedef int (
     raft_node_t     *node
     );
 
-#ifndef HAVE_FUNC_LOG
-  #define HAVE_FUNC_LOG
-
-/** Callback for providing debug logging information.
- * This callback is optional
- * @param[in] raft The Raft server making this callback
- * @param[in] node The node that is the subject of this log. Could be NULL.
- * @param[in] user_data User data that is passed from Raft server
- * @param[in] buf The buffer that was logged */
-typedef void (
-*func_log_f
-)    (
-    raft_server_t   *raft,
-    raft_node_t     *node,
-    void            *user_data,
-    const char      *buf
-    );
-#endif
-
 /** Callback for saving who we voted for to disk.
  * For safety reasons this callback MUST flush the change to disk.
  * @param[in] raft The Raft server making this callback
@@ -552,10 +533,6 @@ typedef struct
     func_node_has_sufficient_logs_f     node_has_sufficient_logs;
 
     func_membership_event_f             notify_membership_event;
-
-    /** Callback for catching debugging log messages
-     * This callback is optional */
-    func_log_f                          log;
 } raft_cbs_t;
 
 /**

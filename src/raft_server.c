@@ -27,21 +27,6 @@
   #define max(a, b) ((a) < (b) ? (b) : (a))
 #endif
 
-static void __log(raft_server_private_t *me, raft_node_t *node, const char *fmt, ...)
-{
-    if (me->cb.log == NULL) {
-        return;
-    }
-
-    char    buf[1024];
-    va_list args;
-
-    va_start(args, fmt);
-    vsnprintf(buf, sizeof(buf), fmt, args);
-
-    me->cb.log((raft_server_t *)me, node, me->udata, buf);
-}
-
 raft_server_private_t *raft_server_new(void)
 {
     raft_server_private_t *me =
@@ -166,7 +151,7 @@ int raft_server_del_entries_ahead_from_idx(raft_server_private_t *me, raft_index
 
 int raft_server_election_start(raft_server_private_t *me)
 {
-    __log(me, NULL, "election starting: %d %d, term: %d ci: %d",
+    raft_printf(LOG_INFO, "election starting: %d %d, term: %d ci: %d",
         me->election_timeout_rand,
         me->timeout_elapsed,
         me->current_term,
@@ -179,7 +164,7 @@ void raft_server_become_leader(raft_server_private_t *me)
 {
     int i;
 
-    __log(me, NULL, "becoming leader term:%d", raft_server_get_current_term(me));
+    raft_printf(LOG_INFO, "becoming leader term:%d", raft_server_get_current_term(me));
 
     raft_server_set_state(me, RAFT_STATE_LEADER);
 
@@ -200,7 +185,7 @@ int raft_server_become_candidate(raft_server_private_t *me)
 {
     int i;
 
-    __log(me, NULL, "becoming candidate");
+    raft_printf(LOG_INFO, "becoming candidate");
 
     int e = raft_server_set_current_term(me, raft_server_get_current_term(me) + 1);
 
@@ -230,7 +215,7 @@ int raft_server_become_candidate(raft_server_private_t *me)
 
 void raft_server_become_follower(raft_server_private_t *me)
 {
-    __log(me, NULL, "becoming follower");
+    raft_printf(LOG_INFO, "becoming follower");
     raft_server_set_state(me, RAFT_STATE_FOLLOWER);
 }
 
@@ -305,7 +290,7 @@ int raft_server_recv_appendentries_response(raft_server_private_t   *me,
     raft_node_t                                                     *node,
     msg_appendentries_response_t                                    *r)
 {
-    __log(me, node,
+    raft_printf(LOG_INFO,
         "received appendentries response %s ci:%d rci:%d 1stidx:%d",
         r->success == 1 ? "SUCCESS" : "fail",
         raft_cache_get_entry_last_idx(me->log),
@@ -434,7 +419,7 @@ int raft_server_recv_appendentries(
 
     if (ae->bat) {
         /* not heartbeat */
-        __log(me, node, "recvd appendentries t:%d ci:%d lc:%d pli:%d plt:%d #%d",
+        raft_printf(LOG_INFO, "recvd appendentries t:%d ci:%d lc:%d pli:%d plt:%d #%d",
             ae->term,
             raft_cache_get_entry_last_idx(me->log),
             ae->leader_commit,
@@ -455,7 +440,7 @@ int raft_server_recv_appendentries(
         raft_server_become_follower(me);
     } else if (me->current_term > ae->term) {
         /* 1. Reply false if term < currentTerm (§5.1) */
-        __log(me, node, "AE term %d is less than current term %d",
+        raft_printf(LOG_INFO, "AE term %d is less than current term %d",
             ae->term, me->current_term);
         goto out;
     }
@@ -474,21 +459,21 @@ int raft_server_recv_appendentries(
             /* Is a snapshot */
             if (me->snapshot_last_term != ae->prev_log_term) {
                 /* Should never happen; something is seriously wrong! */
-                __log(me, node, "Snapshot AE prev conflicts with committed entry");
+                raft_printf(LOG_INFO, "Snapshot AE prev conflicts with committed entry");
                 e = RAFT_ERR_SHUTDOWN;
                 goto out;
             }
         } else if (!term) {
-            __log(me, node, "AE no log at prev_idx %d", ae->prev_log_idx);
+            raft_printf(LOG_INFO, "AE no log at prev_idx %d", ae->prev_log_idx);
             goto out;
         } else if (term != ae->prev_log_term) {
-            __log(me, node, "AE term doesn't match prev_term (ie. %d vs %d) ci:%d comi:%d lcomi:%d pli:%d",
+            raft_printf(LOG_INFO, "AE term doesn't match prev_term (ie. %d vs %d) ci:%d comi:%d lcomi:%d pli:%d",
                 term, ae->prev_log_term, raft_cache_get_entry_last_idx(me->log),
                 raft_server_get_commit_idx(me), ae->leader_commit, ae->prev_log_idx);
 
             if (ae->prev_log_idx <= raft_server_get_commit_idx(me)) {
                 /* Should never happen; something is seriously wrong! */
-                __log(me, node, "AE prev conflicts with committed entry");
+                raft_printf(LOG_INFO, "AE prev conflicts with committed entry");
                 e = RAFT_ERR_SHUTDOWN;
                 goto out;
             }
@@ -519,7 +504,7 @@ int raft_server_recv_appendentries(
         } else if (term != ety->term) {
             if (ety_index <= raft_server_get_commit_idx(me)) {
                 /* Should never happen; something is seriously wrong! */
-                __log(me, node, "AE entry conflicts with committed entry ci:%d comi:%d lcomi:%d pli:%d",
+                raft_printf(LOG_INFO, "AE entry conflicts with committed entry ci:%d comi:%d lcomi:%d pli:%d",
                     raft_cache_get_entry_last_idx(me->log), raft_server_get_commit_idx(me),
                     ae->leader_commit, ae->prev_log_idx);
                 e = RAFT_ERR_SHUTDOWN;
@@ -551,7 +536,7 @@ int raft_server_recv_appendentries(
         if (num) {
             raft_index_t    come_idx = current_idx + 1;
             raft_index_t    over_idx = current_idx + num;
-            __log(me, node, "---------new entrys from %d to %d\n", come_idx, over_idx);
+            raft_printf(LOG_INFO, "---------new entrys from %d to %d\n", come_idx, over_idx);
 
             raft_batch_t *bat = raft_batch_make(num);
 
@@ -645,7 +630,7 @@ int raft_server_send_requestvote_response(raft_server_private_t *me, raft_node_t
     assert(node);
     assert(node != me->node);
 
-    __log(me, node, "sending requestvote response to node [%d]", raft_node_get_id(node));
+    raft_printf(LOG_INFO, "sending requestvote response to node [%d]", raft_node_get_id(node));
 
     int e = 0;
 
@@ -715,7 +700,7 @@ int raft_server_recv_requestvote(raft_server_private_t *me, raft_node_t *node, m
     }
 
 done:
-    __log(me, node, "node requested vote: %d replying: %s",
+    raft_printf(LOG_INFO, "node requested vote: %d replying: %s",
         node,
         vote_granted == 1 ? "granted" :
         vote_granted == 0 ? "not granted" : "unknown");
@@ -741,7 +726,7 @@ int raft_votes_is_majority(const int num_nodes, const int nvotes)
 
 int raft_server_recv_requestvote_response(raft_server_private_t *me, raft_node_t *node, msg_requestvote_response_t *r)
 {
-    __log(me, node, "node responded to requestvote status: %s",
+    raft_printf(LOG_INFO, "node responded to requestvote status: %s",
         r->vote_granted == 1 ? "granted" :
         r->vote_granted == 0 ? "not granted" : "unknown");
 
@@ -763,7 +748,7 @@ int raft_server_recv_requestvote_response(raft_server_private_t *me, raft_node_t
         return 0;
     }
 
-    __log(me, node, "node responded to requestvote status:%s ct:%d rt:%d",
+    raft_printf(LOG_INFO, "node responded to requestvote status:%s ct:%d rt:%d",
         r->vote_granted == 1 ? "granted" :
         r->vote_granted == 0 ? "not granted" : "unknown",
         me->current_term,
@@ -933,7 +918,7 @@ int raft_server_retain_entries(raft_server_private_t *me, msg_batch_t *bat, void
         raft_entry_t *ety = raft_batch_view_entry(bat, i);
         ety->term = me->current_term;
 
-        __log(me, NULL, "received entry t:%d id: %d idx: %d",
+        raft_printf(LOG_INFO, "received entry t:%d id: %d idx: %d",
             me->current_term, ety->id, raft_cache_get_entry_last_idx(me->log) + 1);
     }
 
@@ -987,7 +972,7 @@ int raft_server_send_requestvote(raft_server_private_t *me, raft_node_t *node)
     assert(node);
     assert(node != me->node);
 
-    __log(me, node, "sending requestvote to node [%d]", raft_node_get_id(node));
+    raft_printf(LOG_INFO, "sending requestvote to node [%d]", raft_node_get_id(node));
 
     msg_requestvote_t rv;
     rv.term = me->current_term;
@@ -1074,7 +1059,7 @@ int raft_server_send_appendentries(raft_server_private_t *me, raft_node_t *node)
         }
     }
 
-    __log(me, node, "sending appendentries node: ci:%d comi:%d t:%d lc:%d pli:%d plt:%d",
+    raft_printf(LOG_INFO, "sending appendentries node: ci:%d comi:%d t:%d lc:%d pli:%d plt:%d",
         raft_cache_get_entry_last_idx(me->log),
         raft_server_get_commit_idx(me),
         ae.term,
@@ -1253,7 +1238,7 @@ int raft_server_async_apply_entries_start(raft_server_private_t *me)
         return -1;
     }
 
-    __log(me, NULL, "applying log: from %d over %d", from_idx, over_idx);
+    raft_printf(LOG_INFO, "applying log: from %d over %d", from_idx, over_idx);
 
     raft_server_set_last_applying_idx(me, over_idx);
 
@@ -1515,7 +1500,7 @@ int raft_begin_snapshot(raft_server_t *me_)
     raft_set_snapshot_metadata(me_, ety->term, snapshot_target);
     me->snapshot_in_progress = 1;
 
-    __log(me, NULL,
+    raft_printf(LOG_INFO,
         "begin snapshot sli:%d slt:%d slogs:%d\n",
         me->snapshot_last_idx,
         me->snapshot_last_term,
@@ -1545,7 +1530,7 @@ int raft_end_snapshot(raft_server_t *me_)
 
     me->snapshot_in_progress = 0;
 
-    __log(me, NULL,
+    raft_printf(LOG_INFO,
         "end snapshot base:%d commit-index:%d current-index:%d\n",
         raft_cache_get_entry_head_idx(me->log),
         raft_server_get_commit_idx(me),
@@ -1636,7 +1621,7 @@ int raft_begin_load_snapshot(
     me->nodes[0] = me->nodes[my_node_by_idx];
     me->num_nodes = 1;
 
-    __log(me, NULL,
+    raft_printf(LOG_INFO,
         "loaded snapshot sli:%d slt:%d slogs:%d\n",
         me->snapshot_last_idx,
         me->snapshot_last_term,
@@ -1762,7 +1747,7 @@ int raft_server_send_appendentries_response(raft_server_private_t *me, raft_node
     assert(node);
     assert(node != me->node);
 
-    __log(me, node, "sending appendentries response to node [%d]", raft_node_get_id(node));
+    raft_printf(LOG_INFO, "sending appendentries response to node [%d]", raft_node_get_id(node));
 
     int e = 0;
 

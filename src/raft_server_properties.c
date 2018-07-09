@@ -22,7 +22,7 @@ static void raft_randomize_election_timeout(raft_server_private_t *me)
 {
     /* [election_timeout, 2 * election_timeout) */
     me->election_timeout_rand = me->election_timeout + rand() % me->election_timeout;
-    __log(me, NULL, "randomize election timeout to %d", me->election_timeout_rand);
+    raft_printf(LOG_INFO, "randomize election timeout to %d", me->election_timeout_rand);
 }
 
 void raft_server_set_election_timeout(raft_server_private_t *me, int millisec)
