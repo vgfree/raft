@@ -2,7 +2,7 @@
 
 static RAFT_LOGGER_IMPL g_logger_cb = NULL;
 
-int raft_logger_printf(int level, const char *func, const char *file, int line, const char *format, ...)
+int raft_logger_printf(short syslv, const char *func, const char *file, int line, const char *format, ...)
 {
     int ret = 0;
 
@@ -10,7 +10,7 @@ int raft_logger_printf(int level, const char *func, const char *file, int line, 
         va_list ap;
 
         va_start(ap, format);
-        ret = g_logger_cb(level, func, file, line, format, &ap);
+        ret = g_logger_cb(syslv, func, file, line, format, &ap);
         va_end(ap);
     }
 

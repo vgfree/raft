@@ -27,12 +27,12 @@
   #define __FILENAME__ ({ const char *LOCAL(p) = strrchr(__FILE__, '/'); LOCAL(p) ? LOCAL(p) + 1 : __FILE__; })
 #endif
 
-typedef int (*RAFT_LOGGER_IMPL)(int level, const char *func, const char *file, int line, const char *format, va_list *ap);
+typedef int (*RAFT_LOGGER_IMPL)(short syslv, const char *func, const char *file, int line, const char *format, va_list *ap);
 
 int raft_logger_setup(RAFT_LOGGER_IMPL lcb);
 
-int raft_logger_printf(int level, const char *func, const char *file, int line, const char *format, ...);
+int raft_logger_printf(short syslv, const char *func, const char *file, int line, const char *format, ...);
 
-#define raft_printf(level, fmt, ...) \
-    raft_logger_printf(level, __FUNCTION__, __FILENAME__, __LINE__, fmt, ##__VA_ARGS__)
+#define raft_printf(syslv, fmt, ...) \
+    raft_logger_printf(syslv, __FUNCTION__, __FILENAME__, __LINE__, fmt, ##__VA_ARGS__)
 
