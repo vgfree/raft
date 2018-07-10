@@ -11,6 +11,7 @@
 #define RAFT_H_
 
 #include "raft_types.h"
+#include "raft_logger.h"
 
 typedef enum
 {

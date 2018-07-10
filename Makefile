@@ -27,7 +27,7 @@ SHAREDFLAGS = -shared
 SHAREDEXT = so
 endif
 
-OBJECTS = src/raft.o src/raft_server.o src/raft_node.o src/raft_cache.o
+OBJECTS = src/raft.o src/raft_logger.o src/raft_server.o src/raft_node.o src/raft_cache.o
 
 all: static shared
 

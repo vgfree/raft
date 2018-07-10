@@ -1,4 +1,4 @@
-#include "_raft_logger.h"
+#include "raft_logger.h"
 
 static RAFT_LOGGER_IMPL g_logger_cb = NULL;
 
@@ -20,5 +20,6 @@ int raft_logger_printf(short syslv, const char *func, const char *file, int line
 int raft_logger_setup(RAFT_LOGGER_IMPL lcb)
 {
     g_logger_cb = lcb;
+    return 0;
 }
 

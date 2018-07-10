@@ -8,6 +8,7 @@
     "include/raft.h",
     "include/raft_private.h",
     "src/raft.c",
+    "src/raft_logger.c",
     "src/raft_cache.c",
     "src/raft_node.c",
     "src/raft_server.c"
