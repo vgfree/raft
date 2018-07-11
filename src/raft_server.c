@@ -553,8 +553,7 @@ int raft_server_recv_appendentries(
             raft_batch_free(ae->bat);
             ae->bat = NULL;
 
-            raft_server_async_append_entries_start(me, node, bat, come_idx, ae->leader_commit, ae->prev_log_idx + 1);
-            return 0;
+            return raft_server_async_append_entries_start(me, node, bat, come_idx, ae->leader_commit, ae->prev_log_idx + 1);
         }
     }
 
@@ -570,8 +569,7 @@ out:
         ae->bat = NULL;
     }
 
-    raft_server_async_append_entries_finish(me, node, can_update_commit, ae->leader_commit, success, current_idx, ae->prev_log_idx + 1);
-    return e;
+    return raft_server_async_append_entries_finish(me, node, can_update_commit, ae->leader_commit, success, current_idx, ae->prev_log_idx + 1);
 }
 
 static int raft_server_already_voted(raft_server_private_t *me)
@@ -791,14 +789,16 @@ int raft_server_recv_requestvote_response(raft_server_private_t *me, raft_node_t
 
 int raft_server_async_retain_entries_start(raft_server_private_t *me, raft_batch_t *bat, raft_index_t idx, void *usr)
 {
-    if (bat->n_entries == 1) {
+    int n_entries = bat->n_entries;
+
+    if (n_entries == 1) {
         raft_entry_t *ety = raft_batch_view_entry(bat, 0);
 
         if (raft_entry_is_voting_cfg_change(ety)) {
             me->voting_cfg_change_log_idx = raft_cache_get_entry_last_idx(me->log);
         }
     } else {
-        for (int i = 0; i < bat->n_entries; i++) {
+        for (int i = 0; i < n_entries; i++) {
             raft_entry_t *ety = raft_batch_view_entry(bat, i);
             assert(!raft_entry_is_voting_cfg_change(ety));
         }
@@ -809,27 +809,20 @@ int raft_server_async_retain_entries_start(raft_server_private_t *me, raft_batch
     raft_index_t start_idx = raft_cache_get_entry_last_idx(me->log) + 1;
     assert(start_idx == idx);
 
-    if (me->cb.log_retain) {
-        int e = me->cb.log_retain((raft_server_t *)me, ud, bat, start_idx, usr);
-
-        if (0 != e) {
-            return e;
-        }
-    } else {
-        assert(0);
-        int n_entries = bat->n_entries;
-        raft_server_dispose_entries_cache(me, true, bat, idx);
-
-        raft_server_async_retain_entries_finish(me, 0, n_entries, usr);
-    }
-
-    return 0;
+    /*
+     * if success, you need call like this:
+     * raft_server_dispose_entries_cache(me, true, bat, idx);
+     * raft_server_async_retain_entries_finish(me, 0, n_entries, usr);
+     */
+    assert(me->cb.log_retain);
+    return me->cb.log_retain((raft_server_t *)me, ud, bat, start_idx, usr);
 }
 
 int raft_server_async_retain_entries_finish(raft_server_private_t *me, int result, int n_entries, void *usr)
 {
+    /*非leader不该变更*/
+    assert(raft_server_is_leader(me));
     me->retain_evts--;
-    assert(me->cb.log_retain_done);
 
     if (result == 0) {
         for (int i = 0; i < me->num_nodes; i++) {
@@ -869,6 +862,7 @@ int raft_server_async_retain_entries_finish(raft_server_private_t *me, int resul
         }
     }
 
+    assert(me->cb.log_retain_done);
     return me->cb.log_retain_done((raft_server_t *)me, me->udata, result, me->current_term,
                raft_cache_get_entry_last_idx(me->log) - n_entries + 1, raft_cache_get_entry_last_idx(me->log), usr);// FIXME:
 }
@@ -922,25 +916,27 @@ int raft_server_retain_entries(raft_server_private_t *me, msg_batch_t *bat, void
             me->current_term, ety->id, raft_cache_get_entry_last_idx(me->log) + 1);
     }
 
-    int e = raft_server_async_retain_entries_start(me, bat, raft_cache_get_entry_last_idx(me->log) + 1, usr);
-    assert(0 == e);
-    return 0;
+    return raft_server_async_retain_entries_start(me, bat, raft_cache_get_entry_last_idx(me->log) + 1, usr);
 
 out:
-    raft_server_async_retain_entries_finish(me, result, 0, usr);
-    return 0;
+    return raft_server_async_retain_entries_finish(me, result, 0, usr);
 }
 
 int raft_server_remind_entries(raft_server_private_t *me, void *usr)
 {
+    int     result = 0;
+    void    *ud = raft_server_get_udata(me);
+
     /* Multi-threading: need to fail here because user might be
      * snapshotting membership settings. */
     if (raft_snapshot_is_in_progress((raft_server_t *)me)) {
-        return RAFT_ERR_SNAPSHOT_IN_PROGRESS;
+        result = RAFT_ERR_SNAPSHOT_IN_PROGRESS;
+        goto out;
     }
 
     if (!raft_server_is_leader(me)) {
-        return RAFT_ERR_NOT_LEADER;
+        result = RAFT_ERR_NOT_LEADER;
+        goto out;
     }
 
     raft_index_t    applied_idx = raft_server_get_last_applied_idx(me);
@@ -955,16 +951,12 @@ int raft_server_remind_entries(raft_server_private_t *me, void *usr)
             NULL,
             NULL);
 
-    void *ud = raft_server_get_udata(me);
+    assert(me->cb.log_remind);
+    return me->cb.log_remind((raft_server_t *)me, ud, bat, from_idx, usr);
 
-    if (me->cb.log_remind) {
-        int e = me->cb.log_remind((raft_server_t *)me, ud, bat, from_idx, usr);
-        assert(0 == e);
-    } else {
-        assert(0);
-    }
-
-    return 0;
+out:
+    assert(me->cb.log_remind_done);
+    return me->cb.log_remind_done((raft_server_t *)me, ud, result, usr);
 }
 
 int raft_server_send_requestvote(raft_server_private_t *me, raft_node_t *node)
@@ -1033,10 +1025,6 @@ int raft_server_send_appendentries(raft_server_private_t *me, raft_node_t *node)
         return RAFT_ERR_NEEDS_SNAPSHOT;
     }
 
-    if (!(me->cb.send_appendentries)) {
-        return -1;
-    }
-
     msg_appendentries_t ae = {};
     ae.term = me->current_term;
     ae.leader_commit = raft_server_get_commit_idx(me);
@@ -1067,6 +1055,7 @@ int raft_server_send_appendentries(raft_server_private_t *me, raft_node_t *node)
         ae.prev_log_idx,
         ae.prev_log_term);
 
+    assert(me->cb.send_appendentries);
     return me->cb.send_appendentries((raft_server_t *)me, me->udata, node, &ae);
 }
 
@@ -1702,25 +1691,20 @@ int raft_server_async_append_entries_start(raft_server_private_t *me, raft_node_
     raft_index_t start_idx = raft_cache_get_entry_last_idx(me->log) + 1;
     assert(start_idx == idx);
 
-    if (me->cb.log_append) {
-        int e = me->cb.log_append((raft_server_t *)me, ud, bat, start_idx, node, leader_commit, rsp_first_idx);
-
-        if (0 != e) {
-            return e;
-        }
-    } else {
-        assert(0);
-        raft_server_dispose_entries_cache(me, true, bat, idx);
-
-        raft_server_async_append_entries_finish(me, node, true, leader_commit, 1, raft_cache_get_entry_last_idx(me->log), rsp_first_idx);
-    }
-
-    return 0;
+    /*
+     * if success, you need call like this:
+     * raft_server_dispose_entries_cache(me, true, bat, idx);
+     * raft_server_async_append_entries_finish(me, node, true, leader_commit, 1, raft_cache_get_entry_last_idx(me->log), rsp_first_idx);
+     */
+    assert(me->cb.log_append);
+    return me->cb.log_append((raft_server_t *)me, ud, bat, start_idx, node, leader_commit, rsp_first_idx);
 }
 
 int raft_server_async_append_entries_finish(raft_server_private_t *me, raft_node_t *node, bool can_update_commit, raft_index_t leader_commit,
     int rsp_success, raft_index_t rsp_current_idx, raft_index_t rsp_first_idx)
 {
+    /*leader不该变更*/
+    assert(!raft_server_is_leader(me));
     me->append_evts--;
 
     if (can_update_commit) {
@@ -1749,13 +1733,8 @@ int raft_server_send_appendentries_response(raft_server_private_t *me, raft_node
 
     raft_printf(LOG_INFO, "sending appendentries response to node [%d]", raft_node_get_id(node));
 
-    int e = 0;
-
-    if (me->cb.send_appendentries_response) {
-        e = me->cb.send_appendentries_response((raft_server_t *)me, me->udata, node, r);
-    }
-
-    return e;
+    assert(me->cb.send_appendentries_response);
+    return me->cb.send_appendentries_response((raft_server_t *)me, me->udata, node, r);
 }
 
 #include "raft_server_properties.c"

@@ -436,6 +436,15 @@ typedef int (
     );
 
 typedef int (
+*func_log_remind_done_f
+)   (
+    raft_server_t   *raft,
+    void            *user_data,
+    int             result,
+    void            *usr
+    );
+
+typedef int (
 *func_log_append_f
 )   (
     raft_server_t   *raft,
@@ -506,6 +515,8 @@ typedef struct
     func_log_retain_done_f              log_retain_done;
 
     func_log_remind_f                   log_remind;
+
+    func_log_remind_done_f              log_remind_done;
 
     /** Callback for adding some entries to the follower log
      * For safety reasons this callback MUST flush the change to disk.
