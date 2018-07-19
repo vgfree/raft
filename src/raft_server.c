@@ -428,9 +428,8 @@ int raft_server_recv_appendentries(
             ae->bat->n_entries);
     }
 
-    if (raft_server_is_candidate(me) && (me->current_term == ae->term)) {
-        raft_server_become_follower(me);
-    } else if (me->current_term < ae->term) {
+    if (me->current_term < ae->term) {
+        raft_printf(LOG_INFO, "update term %d", ae->term);
         e = raft_server_set_current_term(me, ae->term);
 
         if (0 != e) {
@@ -443,6 +442,19 @@ int raft_server_recv_appendentries(
         raft_printf(LOG_INFO, "AE term %d is less than current term %d",
             ae->term, me->current_term);
         goto out;
+    } else {
+        /*term is same.*/
+        assert(me->current_term == ae->term);
+
+        if (raft_server_is_candidate(me)) {
+            raft_server_become_follower(me);
+        } else {
+            if (raft_server_is_leader(me)) {
+                raft_printf(LOG_ERR, "I'm the leader.");
+            }
+
+            me->timeout_elapsed = 0;
+        }
     }
 
     /* update current leader because ae->term is up to date */
@@ -1703,8 +1715,11 @@ int raft_server_async_append_entries_start(raft_server_private_t *me, raft_node_
 int raft_server_async_append_entries_finish(raft_server_private_t *me, raft_node_t *node, bool can_update_commit, raft_index_t leader_commit,
     int rsp_success, raft_index_t rsp_current_idx, raft_index_t rsp_first_idx)
 {
-    /*leader不该变更*/
-    assert(!raft_server_is_leader(me));
+    if (rsp_success) {
+        /*leader不该变更*/
+        assert(!raft_server_is_leader(me));
+    }
+
     me->append_evts--;
 
     if (can_update_commit) {
