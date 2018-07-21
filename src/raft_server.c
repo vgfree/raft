@@ -846,8 +846,9 @@ int raft_server_async_retain_entries_finish(raft_server_private_t *me, int resul
              * Don't send the entry to peers who are behind, to prevent them from
              * becoming congested. */
             raft_index_t next_idx = raft_node_get_next_idx(node);
+            raft_index_t news_idx = raft_cache_get_entry_last_idx(me->log) + 1 - n_entries;
 
-            if (next_idx == raft_cache_get_entry_last_idx(me->log)) {
+            if (next_idx == news_idx) {
                 raft_server_send_appendentries(me, node);
             }
         }
