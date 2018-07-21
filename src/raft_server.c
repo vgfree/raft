@@ -642,13 +642,8 @@ int raft_server_send_requestvote_response(raft_server_private_t *me, raft_node_t
 
     raft_printf(LOG_INFO, "sending requestvote response to node [%d]", raft_node_get_id(node));
 
-    int e = 0;
-
-    if (me->cb.send_requestvote_response) {
-        e = me->cb.send_requestvote_response((raft_server_t *)me, me->udata, node, r);
-    }
-
-    return e;
+    assert(me->cb.send_requestvote_response);
+    return me->cb.send_requestvote_response((raft_server_t *)me, me->udata, node, r);
 }
 
 int raft_server_recv_requestvote(raft_server_private_t *me, raft_node_t *node, msg_requestvote_t *vr)
@@ -925,7 +920,7 @@ int raft_server_retain_entries(raft_server_private_t *me, msg_batch_t *bat, void
         ety->term = me->current_term;
 
         raft_printf(LOG_INFO, "received entry t:%d id: %d idx: %d",
-            me->current_term, ety->id, raft_cache_get_entry_last_idx(me->log) + 1);
+            me->current_term, ety->id, raft_cache_get_entry_last_idx(me->log) + 1 + i);
     }
 
     return raft_server_async_retain_entries_start(me, bat, raft_cache_get_entry_last_idx(me->log) + 1, usr);
