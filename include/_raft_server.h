@@ -211,6 +211,7 @@ int raft_server_async_append_entries_finish(raft_server_private_t *me, raft_node
 
 int raft_server_periodic(raft_server_private_t *me, int msec_since_last_period);
 
+/******************************/
 int raft_server_send_appendentries(raft_server_private_t *me, raft_node_t *node);
 
 int raft_server_recv_appendentries(raft_server_private_t *me, raft_node_t *node, msg_appendentries_t *ae);
@@ -219,6 +220,7 @@ int raft_server_send_appendentries_response(raft_server_private_t *me, raft_node
 
 int raft_server_recv_appendentries_response(raft_server_private_t *me, raft_node_t *node, msg_appendentries_response_t *r);
 
+/******************************/
 int raft_server_send_requestvote(raft_server_private_t *me, raft_node_t *node);
 
 int raft_server_recv_requestvote(raft_server_private_t *me, raft_node_t *node, msg_requestvote_t *vr);
@@ -227,6 +229,16 @@ int raft_server_send_requestvote_response(raft_server_private_t *me, raft_node_t
 
 int raft_server_recv_requestvote_response(raft_server_private_t *me, raft_node_t *node, msg_requestvote_response_t *r);
 
+/******************************/
+int raft_server_send_heartbeat(raft_server_private_t *me, raft_node_t *node);
+
+int raft_server_recv_heartbeat(raft_server_private_t *me, raft_node_t *node, msg_heartbeat_t *hb);
+
+int raft_server_send_heartbeat_response(raft_server_private_t *me, raft_node_t *node, msg_heartbeat_response_t *r);
+
+int raft_server_recv_heartbeat_response(raft_server_private_t *me, raft_node_t *node, msg_heartbeat_response_t *r);
+
+/******************************/
 int raft_server_retain_entries(raft_server_private_t *me, msg_batch_t *bat, void *usr);
 
 int raft_server_remind_entries(raft_server_private_t *me, void *usr);

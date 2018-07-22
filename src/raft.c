@@ -285,6 +285,21 @@ int raft_recv_appendentries_response(raft_server_t  *me,
     return raft_server_recv_appendentries_response((raft_server_private_t *)me, node, r);
 }
 
+int raft_recv_heartbeat(raft_server_t   *me,
+    raft_node_t                             *node,
+    msg_heartbeat_t                     *hb)
+{
+    return raft_server_recv_heartbeat((raft_server_private_t *)me, node, hb);
+}
+
+int raft_recv_heartbeat_response(raft_server_t  *me,
+    raft_node_t                                     *node,
+    msg_heartbeat_response_t                    *r)
+{
+    return raft_server_recv_heartbeat_response((raft_server_private_t *)me, node, r);
+}
+
+
 int raft_recv_requestvote(raft_server_t *me, raft_node_t *node, msg_requestvote_t *vr)
 {
     return raft_server_recv_requestvote((raft_server_private_t *)me, node, vr);

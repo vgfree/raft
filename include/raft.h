@@ -191,6 +191,45 @@ typedef struct
     int         vote_granted;
 } msg_requestvote_response_t;
 
+typedef struct
+{
+    /** currentTerm, to force other leader/candidate to step down */
+    raft_term_t     term;
+
+    /** the index of the log just before the newest entry for the node who
+     * receives this message */
+    raft_index_t    prev_log_idx;
+
+    /** the term of the log just before the newest entry for the node who
+     * receives this message */
+    raft_term_t     prev_log_term;
+
+    /** the index of the entry that has been appended to the majority of the
+     * cluster. Entries up to this index will be applied to the FSM */
+    raft_index_t    leader_commit;
+} msg_heartbeat_t;
+
+typedef struct
+{
+    /** currentTerm, to force other leader/candidate to step down */
+    raft_term_t     term;
+
+    /** true if follower contained entry matching prevLogidx and prevLogTerm */
+    int             success;
+
+    /* Non-Raft fields follow: */
+
+    /* Having the following fields allows us to do less book keeping in
+     * regards to full fledged RPC */
+
+    /** If success, this is the highest log IDX we've received and appended to
+     * our log; otherwise, this is the our currentIndex */
+    raft_index_t    current_idx;
+
+    /** The first idx that we received within the appendentries message */
+    raft_index_t    first_idx;
+} msg_heartbeat_response_t;
+
 /** Appendentries message.
  * This message is used to tell nodes if it's safe to apply entries to the FSM.
  * Can be sent without any entries as a keep alive message.
@@ -272,6 +311,30 @@ typedef int (
     void                        *user_data,
     raft_node_t                 *node,
     msg_requestvote_response_t  *msg
+    );
+
+typedef int (
+*func_send_heartbeat_f
+)   (
+    raft_server_t       *raft,
+    void                *user_data,
+    raft_node_t         *node,
+    msg_heartbeat_t *msg
+    );
+
+/** Callback for sending append entries response messages.
+ * @param[in] raft The Raft server making this callback
+ * @param[in] user_data User data that is passed from Raft server
+ * @param[in] node The node's ID that we are sending this message to
+ * @param[in] msg The appendentries_response message to be sent
+ * @return 0 on success */
+typedef int (
+*func_send_heartbeat_response_f
+)   (
+    raft_server_t                   *raft,
+    void                            *user_data,
+    raft_node_t                     *node,
+    msg_heartbeat_response_t    *msg
     );
 
 /** Callback for sending append entries messages.
@@ -482,6 +545,12 @@ typedef struct
 
     /** Callback for sending request vote response messages */
     func_send_requestvote_response_f    send_requestvote_response;
+
+    /** Callback for sending heartbeat messages */
+    func_send_heartbeat_f           send_heartbeat;
+
+    /** Callback for sending heartbeat response messages */
+    func_send_heartbeat_response_f  send_heartbeat_response;
 
     /** Callback for sending appendentries messages */
     func_send_appendentries_f           send_appendentries;
@@ -898,6 +967,14 @@ int raft_recv_appendentries(raft_server_t   *me,
 int raft_recv_appendentries_response(raft_server_t  *me,
     raft_node_t                                     *node,
     msg_appendentries_response_t                    *r);
+
+int raft_recv_heartbeat(raft_server_t   *me,
+    raft_node_t                             *node,
+    msg_heartbeat_t                     *hb);
+
+int raft_recv_heartbeat_response(raft_server_t  *me,
+    raft_node_t                                     *node,
+    msg_heartbeat_response_t                    *r);
 
 /** Receive a requestvote message.
  * @param[in] node The node who sent us this message
