@@ -11,9 +11,9 @@ void    *(*__raft_realloc)(void *, size_t) = realloc;
 void    (*__raft_free)(void *) = free;
 
 void raft_set_heap_functions(void *(*_malloc)(size_t),
-    void *(*_calloc)(size_t, size_t),
-    void *(*_realloc)(void *, size_t),
-    void (*_free)(void *))
+        void *(*_calloc)(size_t, size_t),
+        void *(*_realloc)(void *, size_t),
+        void (*_free)(void *))
 {
     __raft_malloc = _malloc;
     __raft_calloc = _calloc;
@@ -22,7 +22,7 @@ void raft_set_heap_functions(void *(*_malloc)(size_t),
 }
 
 raft_entry_t *raft_entry_make(unsigned int term, unsigned int id, int type,
-    void *buf, unsigned int len)
+        void *buf, unsigned int len)
 {
     raft_entry_t *ety = __raft_calloc(1, sizeof(raft_entry_t));
 
@@ -272,33 +272,32 @@ int raft_periodic(raft_server_t *me, int msec_elapsed)
 }
 
 int raft_recv_appendentries(raft_server_t   *me,
-    raft_node_t                             *node,
-    msg_appendentries_t                     *ae)
+        raft_node_t                         *node,
+        msg_appendentries_t                 *ae)
 {
     return raft_server_recv_appendentries((raft_server_private_t *)me, node, ae);
 }
 
 int raft_recv_appendentries_response(raft_server_t  *me,
-    raft_node_t                                     *node,
-    msg_appendentries_response_t                    *r)
+        raft_node_t                                 *node,
+        msg_appendentries_response_t                *r)
 {
     return raft_server_recv_appendentries_response((raft_server_private_t *)me, node, r);
 }
 
 int raft_recv_heartbeat(raft_server_t   *me,
-    raft_node_t                             *node,
-    msg_heartbeat_t                     *hb)
+        raft_node_t                     *node,
+        msg_heartbeat_t                 *hb)
 {
     return raft_server_recv_heartbeat((raft_server_private_t *)me, node, hb);
 }
 
 int raft_recv_heartbeat_response(raft_server_t  *me,
-    raft_node_t                                     *node,
-    msg_heartbeat_response_t                    *r)
+        raft_node_t                             *node,
+        msg_heartbeat_response_t                *r)
 {
     return raft_server_recv_heartbeat_response((raft_server_private_t *)me, node, r);
 }
-
 
 int raft_recv_requestvote(raft_server_t *me, raft_node_t *node, msg_requestvote_t *vr)
 {
@@ -326,10 +325,10 @@ int raft_async_apply_entries_finish(raft_server_t *me, bool ok, raft_batch_t *ba
 }
 
 int raft_async_append_entries_finish(raft_server_t *me, raft_node_t *node, bool can_update_commit, raft_index_t leader_commit,
-    int rsp_success, raft_index_t rsp_current_idx, raft_index_t rsp_first_idx)
+        int rsp_success, raft_index_t rsp_current_idx, raft_index_t rsp_first_idx)
 {
     return raft_server_async_append_entries_finish((raft_server_private_t *)me, node, can_update_commit, leader_commit,
-               rsp_success, rsp_current_idx, rsp_first_idx);
+                   rsp_success, rsp_current_idx, rsp_first_idx);
 }
 
 int raft_async_retain_entries_finish(raft_server_t *me, int result, int n_entries, void *usr)

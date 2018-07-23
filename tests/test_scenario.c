@@ -49,7 +49,7 @@ void TestRaft_scenario_leader_appears(CuTest *tc)
         raft_add_node(r[j], sender[1], 2, j == 1);
         raft_add_node(r[j], sender[2], 3, j == 2);
         raft_set_callbacks(r[j],
-            &((raft_cbs_t) {
+                &((raft_cbs_t) {
             .send_requestvote = sender_requestvote,
             .send_appendentries = sender_appendentries,
             .persist_term = __raft_persist_term,

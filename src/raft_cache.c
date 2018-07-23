@@ -136,9 +136,9 @@ static raft_index_t raft_cache_count_from_idx(raft_cache_private_t *me, raft_ind
 }
 
 raft_batch_t *raft_cache_dup_among_idx(raft_cache_private_t *me, raft_index_t from_idx, raft_index_t over_idx,
-    RAFT_CACHE_FILTER_FCB filter,
-    RAFT_CACHE_FINISH_FCB finish,
-    void *usr)
+        RAFT_CACHE_FILTER_FCB filter,
+        RAFT_CACHE_FINISH_FCB finish,
+        void *usr)
 {
     assert(over_idx >= from_idx);
 

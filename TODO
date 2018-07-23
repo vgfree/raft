@@ -2,4 +2,6 @@
 写入记录到log数组的时候要copy这个结构
 读取记录从log数组的时候要copy这个结构
 其它过程中都用指针传递
+bug:
+heartbeat的请求不能update leader_commit
 

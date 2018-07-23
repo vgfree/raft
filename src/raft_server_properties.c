@@ -85,31 +85,31 @@ raft_node_id_t raft_server_get_voted_for(raft_server_private_t *me)
 
 int raft_server_set_voted_for(raft_server_private_t *me, const raft_node_id_t id)
 {
-	assert(me->cb.persist_vote);
-	int e = me->cb.persist_vote((raft_server_t *)me, me->udata, id);
+    assert(me->cb.persist_vote);
+    int e = me->cb.persist_vote((raft_server_t *)me, me->udata, id);
 
-	if (0 == e) {
-		me->voted_for = id;
-	}
+    if (0 == e) {
+        me->voted_for = id;
+    }
 
-	return e;
+    return e;
 }
 
 int raft_server_set_current_term(raft_server_private_t *me, const raft_term_t term)
 {
-	if (me->current_term < term) {
-		raft_node_id_t voted_for = -1;// TODO: remove voted_for
+    if (me->current_term < term) {
+        raft_node_id_t voted_for = -1;// TODO: remove voted_for
 
-		assert(me->cb.persist_term);
-		int e = me->cb.persist_term((raft_server_t *)me, me->udata, term, voted_for);
+        assert(me->cb.persist_term);
+        int e = me->cb.persist_term((raft_server_t *)me, me->udata, term, voted_for);
 
-		if (0 == e) {
-			me->current_term = term;
-			me->voted_for = voted_for;
-		}
+        if (0 == e) {
+            me->current_term = term;
+            me->voted_for = voted_for;
+        }
 
-		return e;
-	}
+        return e;
+    }
 
     return 0;
 }

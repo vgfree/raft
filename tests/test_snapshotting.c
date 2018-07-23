@@ -40,25 +40,25 @@ static int __raft_log_apply(
 }
 
 static int __raft_send_requestvote(raft_server_t    *raft,
-    void                                            *udata,
-    raft_node_t                                     *node,
-    msg_requestvote_t                               *msg)
+        void                                        *udata,
+        raft_node_t                                 *node,
+        msg_requestvote_t                           *msg)
 {
     return 0;
 }
 
 static int __raft_server_send_appendentries(raft_server_t   *raft,
-    void                                                    *udata,
-    raft_node_t                                             *node,
-    msg_appendentries_t                                     *msg)
+        void                                                *udata,
+        raft_node_t                                         *node,
+        msg_appendentries_t                                 *msg)
 {
     return 0;
 }
 
 static int __raft_server_send_appendentries_capture(raft_server_t   *raft,
-    void                                                            *udata,
-    raft_node_t                                                     *node,
-    msg_appendentries_t                                             *msg)
+        void                                                        *udata,
+        raft_node_t                                                 *node,
+        msg_appendentries_t                                         *msg)
 {
     msg_appendentries_t *msg_captured = (msg_appendentries_t *)udata;
 

@@ -204,10 +204,10 @@ int raft_server_async_apply_entries_finish(raft_server_private_t *me, bool ok, r
 raft_index_t raft_server_dispose_entries_cache(raft_server_private_t *me, bool ok, raft_batch_t *bat, raft_index_t idx);
 
 int raft_server_async_append_entries_start(raft_server_private_t *me, raft_node_t *node, raft_batch_t *bat, raft_index_t idx,
-    raft_index_t leader_commit, raft_index_t rsp_first_idx);
+        raft_index_t leader_commit, raft_index_t rsp_first_idx);
 
 int raft_server_async_append_entries_finish(raft_server_private_t *me, raft_node_t *node, bool can_update_commit, raft_index_t leader_commit,
-    int rsp_success, raft_index_t rsp_current_idx, raft_index_t rsp_first_idx);
+        int rsp_success, raft_index_t rsp_current_idx, raft_index_t rsp_first_idx);
 
 int raft_server_periodic(raft_server_private_t *me, int msec_since_last_period);
 

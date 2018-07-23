@@ -52,33 +52,33 @@ int __raft_log_apply_shutdown(
 }
 
 int __raft_send_requestvote(raft_server_t   *raft,
-    void                                    *udata,
-    raft_node_t                             *node,
-    msg_requestvote_t                       *msg)
+        void                                *udata,
+        raft_node_t                         *node,
+        msg_requestvote_t                   *msg)
 {
     return 0;
 }
 
 static int __raft_server_send_appendentries(raft_server_t   *raft,
-    void                                                    *udata,
-    raft_node_t                                             *node,
-    msg_appendentries_t                                     *msg)
+        void                                                *udata,
+        raft_node_t                                         *node,
+        msg_appendentries_t                                 *msg)
 {
     return 0;
 }
 
 static int __raft_log_get_node_id(raft_server_t *raft,
-    void                                        *udata,
-    raft_entry_t                                *entry,
-    raft_index_t                                entry_idx)
+        void                                    *udata,
+        raft_entry_t                            *entry,
+        raft_index_t                            entry_idx)
 {
     return atoi(entry->data.buf);
 }
 
 static int __raft_log_offer(raft_server_t   *raft,
-    void                                    *udata,
-    raft_entry_t                            *entry,
-    raft_index_t                            entry_idx)
+        void                                *udata,
+        raft_entry_t                        *entry,
+        raft_index_t                        entry_idx)
 {
     return 0;
 }
@@ -2601,7 +2601,7 @@ void TestRaft_leader_when_becomes_leader_all_nodes_have_nextidx_equal_to_lastlog
     for (i = 2; i <= 3; i++) {
         raft_node_t *p = raft_get_node(r, i);
         CuAssertTrue(tc, raft_cache_get_entry_last_idx(r->log) + 1 ==
-            raft_node_get_next_idx(p));
+                raft_node_get_next_idx(p));
     }
 }
 

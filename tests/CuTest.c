@@ -186,13 +186,13 @@ void CuAssert_Line(CuTest *tc, const char *file, int line, const char *message, 
 }
 
 void CuAssertStrEquals_LineMsg(CuTest *tc, const char *file, int line, const char *message,
-    const char *expected, const char *actual)
+        const char *expected, const char *actual)
 {
     CuString string;
 
     if (((expected == NULL) && (actual == NULL)) ||
-        ((expected != NULL) && (actual != NULL) &&
-        (strcmp(expected, actual) == 0))) {
+            ((expected != NULL) && (actual != NULL) &&
+            (strcmp(expected, actual) == 0))) {
         return;
     }
 
@@ -212,7 +212,7 @@ void CuAssertStrEquals_LineMsg(CuTest *tc, const char *file, int line, const cha
 }
 
 void CuAssertIntEquals_LineMsg(CuTest *tc, const char *file, int line, const char *message,
-    int expected, int actual)
+        int expected, int actual)
 {
     char buf[STRING_MAX];
 
@@ -225,7 +225,7 @@ void CuAssertIntEquals_LineMsg(CuTest *tc, const char *file, int line, const cha
 }
 
 void CuAssertDblEquals_LineMsg(CuTest *tc, const char *file, int line, const char *message,
-    double expected, double actual, double delta)
+        double expected, double actual, double delta)
 {
     char buf[STRING_MAX];
 
@@ -238,7 +238,7 @@ void CuAssertDblEquals_LineMsg(CuTest *tc, const char *file, int line, const cha
 }
 
 void CuAssertPtrEquals_LineMsg(CuTest *tc, const char *file, int line, const char *message,
-    void *expected, void *actual)
+        void *expected, void *actual)
 {
     char buf[STRING_MAX];
 
@@ -311,10 +311,10 @@ void CuSuiteDetails(CuSuite *testSuite, CuString *details)
         if (testCase->failed) {
             failCount++;
             CuStringAppendFormat(details, "not ok %d - %s #%s\n",
-                i + 1, testCase->name, testCase->message);
+                    i + 1, testCase->name, testCase->message);
         } else {
             CuStringAppendFormat(details, "ok %d - %s\n",
-                i + 1, testCase->name);
+                    i + 1, testCase->name);
         }
     }
 }

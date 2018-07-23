@@ -112,7 +112,7 @@ typedef struct
 } raft_entry_t;
 
 raft_entry_t *raft_entry_make(unsigned int term, unsigned int id, int type,
-    void *buf, unsigned int len);
+        void *buf, unsigned int len);
 
 void raft_entry_free(raft_entry_t *ety);
 
@@ -316,9 +316,9 @@ typedef int (
 typedef int (
 *func_send_heartbeat_f
 )   (
-    raft_server_t       *raft,
-    void                *user_data,
-    raft_node_t         *node,
+    raft_server_t   *raft,
+    void            *user_data,
+    raft_node_t     *node,
     msg_heartbeat_t *msg
     );
 
@@ -331,9 +331,9 @@ typedef int (
 typedef int (
 *func_send_heartbeat_response_f
 )   (
-    raft_server_t                   *raft,
-    void                            *user_data,
-    raft_node_t                     *node,
+    raft_server_t               *raft,
+    void                        *user_data,
+    raft_node_t                 *node,
     msg_heartbeat_response_t    *msg
     );
 
@@ -547,10 +547,10 @@ typedef struct
     func_send_requestvote_response_f    send_requestvote_response;
 
     /** Callback for sending heartbeat messages */
-    func_send_heartbeat_f           send_heartbeat;
+    func_send_heartbeat_f               send_heartbeat;
 
     /** Callback for sending heartbeat response messages */
-    func_send_heartbeat_response_f  send_heartbeat_response;
+    func_send_heartbeat_response_f      send_heartbeat_response;
 
     /** Callback for sending appendentries messages */
     func_send_appendentries_f           send_appendentries;
@@ -621,9 +621,9 @@ typedef struct
  * heap management is used.
  **/
 void raft_set_heap_functions(void *(*_malloc)(size_t),
-    void *(*_calloc)(size_t, size_t),
-    void *(*_realloc)(void *, size_t),
-    void (*_free)(void *));
+        void *(*_calloc)(size_t, size_t),
+        void *(*_realloc)(void *, size_t),
+        void (*_free)(void *));
 
 /** Initialise a new Raft server.
  *
@@ -901,8 +901,8 @@ int raft_snapshot_is_in_progress(raft_server_t *me_);
  *  RAFT_ERR_SNAPSHOT_ALREADY_LOADED
  **/
 int raft_begin_load_snapshot(raft_server_t  *me_,
-    raft_term_t                             last_included_term,
-    raft_index_t                            last_included_index);
+        raft_term_t                         last_included_term,
+        raft_index_t                        last_included_index);
 
 /** Stop loading snapshot.
  *
@@ -954,8 +954,8 @@ int raft_periodic(raft_server_t *me, int msec_elapsed);
  *  RAFT_ERR_NEEDS_SNAPSHOT
  *  */
 int raft_recv_appendentries(raft_server_t   *me,
-    raft_node_t                             *node,
-    msg_appendentries_t                     *ae);
+        raft_node_t                         *node,
+        msg_appendentries_t                 *ae);
 
 /** Receive a response from an appendentries message we sent.
  * @param[in] node The node who sent us this message
@@ -965,24 +965,24 @@ int raft_recv_appendentries(raft_server_t   *me,
  *  -1 on error;
  *  RAFT_ERR_NOT_LEADER server is not the leader */
 int raft_recv_appendentries_response(raft_server_t  *me,
-    raft_node_t                                     *node,
-    msg_appendentries_response_t                    *r);
+        raft_node_t                                 *node,
+        msg_appendentries_response_t                *r);
 
 int raft_recv_heartbeat(raft_server_t   *me,
-    raft_node_t                             *node,
-    msg_heartbeat_t                     *hb);
+        raft_node_t                     *node,
+        msg_heartbeat_t                 *hb);
 
 int raft_recv_heartbeat_response(raft_server_t  *me,
-    raft_node_t                                     *node,
-    msg_heartbeat_response_t                    *r);
+        raft_node_t                             *node,
+        msg_heartbeat_response_t                *r);
 
 /** Receive a requestvote message.
  * @param[in] node The node who sent us this message
  * @param[in] vr The requestvote message
  * @return 0 on success */
 int raft_recv_requestvote(raft_server_t *me,
-    raft_node_t                         *node,
-    msg_requestvote_t                   *vr);
+        raft_node_t                     *node,
+        msg_requestvote_t               *vr);
 
 /** Receive a response from a requestvote message we sent.
  * @param[in] node The node this response was sent by
@@ -991,8 +991,8 @@ int raft_recv_requestvote(raft_server_t *me,
  *  0 on success;
  *  RAFT_ERR_SHUTDOWN server MUST shutdown; */
 int raft_recv_requestvote_response(raft_server_t    *me,
-    raft_node_t                                     *node,
-    msg_requestvote_response_t                      *r);
+        raft_node_t                                 *node,
+        msg_requestvote_response_t                  *r);
 
 /** Receive an entry message from the client.
  *
@@ -1032,7 +1032,7 @@ int raft_remind_entries(raft_server_t *me, void *usr);
 int raft_async_apply_entries_finish(raft_server_t *me, bool ok, raft_batch_t *bat, raft_index_t idx);
 
 int raft_async_append_entries_finish(raft_server_t *me, raft_node_t *node, bool can_update_commit, raft_index_t leader_commit,
-    int rsp_success, raft_index_t rsp_current_idx, raft_index_t rsp_first_idx);
+        int rsp_success, raft_index_t rsp_current_idx, raft_index_t rsp_first_idx);
 
 int raft_async_retain_entries_finish(raft_server_t *me, int result, int n_entries, void *usr);
 
