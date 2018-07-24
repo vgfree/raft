@@ -517,12 +517,14 @@ int raft_server_recv_appendentries(
         raft_term_t term = raft_cache_get_term_at_idx(me->log, ety_index);
 
         if (!term) {
+            raft_printf(LOG_DEBUG, "%d entry not exist.", ety_index);
             /* not exist */
             break;
         } else if (term != ety->term) {
+            raft_printf(LOG_WARNING, "peer entry term is %d, self entry term is %d", ety->term, term);
             if (ety_index <= raft_server_get_commit_idx(me)) {
                 /* Should never happen; something is seriously wrong! */
-                raft_printf(LOG_INFO, "AE entry conflicts with committed entry ci:%d comi:%d lcomi:%d pli:%d",
+                raft_printf(LOG_ERR, "AE entry conflicts with committed entry ci:%d comi:%d lcomi:%d pli:%d",
                         raft_cache_get_entry_last_idx(me->log), raft_server_get_commit_idx(me),
                         ae->leader_commit, ae->prev_log_idx);
                 e = RAFT_ERR_SHUTDOWN;
